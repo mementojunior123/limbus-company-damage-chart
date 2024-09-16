@@ -3732,7 +3732,11 @@ skc.OnCrit(skc.ApplyStatusCount(StatusNames.red_plum_blossom, 1), duration=-1), 
 
 "Gawky Nailing" : Skill((3, 4, 2), 0, "Gawky Nailing", ("Pierce", "Envy"), [[], []]),
 "Puri…fy!" : Skill((6, 8, 1), 0, "Puri…fy!", ("Blunt", "Gloom"), [[]]),
-"Infirm Retribution" : Skill((4, 4, 3), 0, "Infirm Retribution", ("Blunt", "Lust"), [[skc.OnHit(skc.NCliffS3Bonus())] for _ in range(3)],)
+"Infirm Retribution" : Skill((4, 4, 3), 0, "Infirm Retribution", ("Blunt", "Lust"), [[skc.OnHit(skc.NCliffS3Bonus())] for _ in range(3)]),
+
+"Bludgeon" : Skill((5, 6, 1), 5, "Bludgeon", ("Blunt", "Pride"), [[]], [skc.CoinPower(2, 0)]),
+"Thrust" : Skill((6, 1, 2), 5, "Thrust", ("Blunt", "Gluttony"), [[], []], [skc.CoinPower(2, 0)]),
+"Suppress" : Skill((7, 2, 2), 5, "Suppress", ("Blunt", "Envy"), [[skc.OnHit(skc.DefenseLevelDown(4))], []], [skc.CoinPower(3, 0, 1)])
 }
 ENEMIES = {
     "Test" : Enemy(40, 100, {}, {}),
@@ -3827,5 +3831,6 @@ UNITS = {
     "7 Sang" : Unit("7 Sang", (gs("Flèche"), gs("Riposte"), gs("Moulinet"))),
     "Dead Meur" : Unit("Dead Meur", (gs("Bat Strike"), gs("Smackdown"), gs("Relentless"))),
     "Molar Sinclair" : Unit("Molar Sinclair", (gs("Fierce Assault"), gs("Steady..."), gs("Gamble"))),
-    "NCliff" : Unit("NCliff", (gs("Gawky Nailing"), gs("Puri…fy!"), gs("Infirm Retribution")))
+    "NCliff" : Unit("NCliff", (gs("Gawky Nailing"), gs("Puri…fy!"), gs("Infirm Retribution"))),
+    "LCCB Rodya" : Unit("LCCB Rodya", (gs("Bludgeon"), gs("Thrust"), gs("Suppress")))
     }

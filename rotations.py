@@ -2663,3 +2663,35 @@ def molar_clair_rotation(unit : Unit, enemy : Enemy, debug : bool = False, start
     
     if debug: print("-".join(sequence))
     return total
+
+def lccb_rodya_rotation(unit : Unit, enemy : Enemy, debug : bool = False, blunt_odds : float = -1, passive_freq : float = -1, unhit : bool = False):
+    sequence = [None for _ in range(6)]
+    bag = get_bag()
+
+    skills = {1 : unit.skill_1, 2 : unit.skill_2, 3 : unit.skill_3}
+    total = 0
+    unit.skill_3.set_conds([unhit])
+    for i in range(6):
+        dashboard = [bag[0], bag[1]]
+        a = max(dashboard)
+        b = min(dashboard)
+        decision = a
+
+        b : bool = True if blunt_odds >= random() else False
+        unit.skill_1.set_conds([b])
+        unit.skill_2.set_conds([b])
+        
+        result = skills[decision].calculate_damage(unit, enemy, debug=debug, entry_effects= [backend.skc.DynamicBonus(0.1)] if passive_freq >= random() else None)
+        total += result
+        
+        if debug: print(result)
+        sequence[i] = str(decision)
+        bag.remove(decision)
+
+        
+        
+        if len(bag) < 2:
+            bag += get_bag()
+    
+    if debug: print("-".join(sequence))
+    return total
