@@ -1228,6 +1228,10 @@ class SkillEffectConstructors:
     @staticmethod
     def LDonS2Rupture():
         return SkillEffect('dynamic', 'add', 0, apply_func=SpecialSkillEffects.LDonS2Rupture)
+    
+    @staticmethod
+    def MolarClairS3Spend():
+        return SkillEffect('dynamic', 'add', 0, apply_func=SpecialSkillEffects.MolarClairS3Spend)
 
 class SkillEffect:
     @classmethod
@@ -2833,6 +2837,11 @@ class SpecialSkillEffects:
             return
         env.effects[self] = [count_applied, -1]
         env.enemy.apply_status("Rupture", 0, count_applied)
+    
+    def MolarClairS3Spend(self : SkillEffect, env : Environment):
+        env.effects[self] = [0, -1]
+        if not hasattr(env.unit, 'tremor'): return
+        if env.unit.tremor >= 10: env.unit.tremor = 0
 
 class SkillConditionals:
     @staticmethod
@@ -3705,7 +3714,12 @@ skc.OnCrit(skc.ApplyStatusCount(StatusNames.red_plum_blossom, 1), duration=-1), 
 "Smackdown" : Skill((4, 5, 2), 1, "Smackdown", ("Pierce", "Wrath"), [[], [skc.OnHit(skc.ApplyStatus("Rupture", 2, 0))]],
 [skc.AddXForEachY(1, 'coin_power', 6, 'enemy.statuses.Rupture.potency'), skc.ApplyStatusCount("Rupture", 2, 0)]),
 "Relentless" : Skill((4, 2, 4), 3, "Relentless", ("Blunt", "Gluttony"), [[], [], [], [skc.OnHit(skc.ApplyStatus("Rupture", 4, 0))]],
-[skc.AddXForEachY(1, 'coin_power', 6, 'enemy.statuses.Rupture.potency')])
+[skc.AddXForEachY(1, 'coin_power', 6, 'enemy.statuses.Rupture.potency')]),
+
+"Fierce Assault" : Skill((2, 1, 4), 1, "Fierce Assault", ("Blunt", "Gloom"), [[], [skc.GainTremor(2)], [], [skc.GainTremor(2)]],
+[skc.DAddXForEachY(1, 'coin_power', 10, 'unit.tremor')]),
+"Steady..." : Skill((4, 12, 1), 1, "Steady...", ("Pierce", "Envy"), [[]], [skc.GainTremor(6)]),
+"Gamble" : Skill((4, 6, 2), 1, "Gamble", ("Pierce", "Gluttony"), [[skc.MolarClairS3Spend()], []], [skc.DAddXForEachY(1, 'coin_power', 10, 'unit.tremor', 0, 2)])
 }
 ENEMIES = {
     "Test" : Enemy(40, 100, {}, {}),
@@ -3798,5 +3812,6 @@ UNITS = {
     "NFaust" : Unit("NFaust", (gs("Cackle"), gs("The Gripping"), gs("Execution"))),
     "Slosh Ish" : Unit("Slosh Ish", (gs("It's Heavy...!"), gs("It's Churning...!"), gs("Corrosive Splash"))),
     "7 Sang" : Unit("7 Sang", (gs("Flèche"), gs("Riposte"), gs("Moulinet"))),
-    "Dead Meur" : Unit("Dead Meur", (gs("Bat Strike"), gs("Smackdown"), gs("Relentless")))
+    "Dead Meur" : Unit("Dead Meur", (gs("Bat Strike"), gs("Smackdown"), gs("Relentless"))),
+    "Molar Sinclair" : Unit("Molar Sinclair", (gs("Fierce Assault"), gs("Steady..."), gs("Gamble")))
     }

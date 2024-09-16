@@ -2632,3 +2632,34 @@ def lccb_ryo_rotation(unit : Unit, enemy : Enemy, debug : bool = False, start_po
     
     if debug: print("-".join(sequence))
     return total
+
+def molar_clair_rotation(unit : Unit, enemy : Enemy, debug : bool = False, start_tremor : int = 0):
+    sequence = [None for _ in range(6)]
+    bag = get_bag()
+
+    skills = {1 : unit.skill_1, 2 : unit.skill_2, 3 : unit.skill_3}
+    total = 0
+    unit.tremor = start_tremor
+    for i in range(6):
+        dashboard = [bag[0], bag[1]]
+        a = max(dashboard)
+        b = min(dashboard)
+        decision = a
+       
+        
+        result = skills[decision].calculate_damage(unit, enemy, debug=debug)
+        total += result
+        
+        if debug: print(result)
+        sequence[i] = str(decision)
+        bag.remove(decision)
+
+        
+        
+        if len(bag) < 2:
+            bag += get_bag()
+
+        if unit.tremor > 0: unit.tremor = 0
+    
+    if debug: print("-".join(sequence))
+    return total
