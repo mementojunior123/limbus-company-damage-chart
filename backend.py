@@ -1232,6 +1232,10 @@ class SkillEffectConstructors:
     @staticmethod
     def MolarClairS3Spend():
         return SkillEffect('dynamic', 'add', 0, apply_func=SpecialSkillEffects.MolarClairS3Spend)
+    
+    @staticmethod
+    def NCliffS3Bonus():
+        return SkillEffect('dynamic', 'add', 0, apply_func=SpecialSkillEffects.NCliffS3Bonus)
 
 class SkillEffect:
     @classmethod
@@ -2843,6 +2847,11 @@ class SpecialSkillEffects:
         if not hasattr(env.unit, 'tremor'): return
         if env.unit.tremor >= 10: env.unit.tremor = 0
 
+    def NCliffS3Bonus(self : SkillEffect, env : Environment):
+        mult : float = 0.1 if env.sequence[env.current_coin_index] == "Heads" else 0.0
+        bonus : int = floor(env.current_damage * mult)
+        env.total += bonus
+        env.effects[self] = [bonus, -1]
 class SkillConditionals:
     @staticmethod
     def HasEgoHeadsHit(self : SkillEffect, env : Environment) -> bool:
@@ -3719,7 +3728,11 @@ skc.OnCrit(skc.ApplyStatusCount(StatusNames.red_plum_blossom, 1), duration=-1), 
 "Fierce Assault" : Skill((2, 1, 4), 1, "Fierce Assault", ("Blunt", "Gloom"), [[], [skc.GainTremor(2)], [], [skc.GainTremor(2)]],
 [skc.DAddXForEachY(1, 'coin_power', 10, 'unit.tremor')]),
 "Steady..." : Skill((4, 12, 1), 1, "Steady...", ("Pierce", "Envy"), [[]], [skc.GainTremor(6)]),
-"Gamble" : Skill((4, 6, 2), 1, "Gamble", ("Pierce", "Gluttony"), [[skc.MolarClairS3Spend()], []], [skc.DAddXForEachY(1, 'coin_power', 10, 'unit.tremor', 0, 2)])
+"Gamble" : Skill((4, 6, 2), 1, "Gamble", ("Pierce", "Gluttony"), [[skc.MolarClairS3Spend()], []], [skc.DAddXForEachY(1, 'coin_power', 10, 'unit.tremor', 0, 2)]),
+
+"Gawky Nailing" : Skill((3, 4, 2), 0, "Gawky Nailing", ("Pierce", "Envy"), [[], []]),
+"Puri…fy!" : Skill((6, 8, 1), 0, "Puri…fy!", ("Blunt", "Gloom"), [[]]),
+"Infirm Retribution" : Skill((4, 4, 3), 0, "Infirm Retribution", ("Blunt", "Lust"), [[skc.OnHit(skc.NCliffS3Bonus())] for _ in range(3)],)
 }
 ENEMIES = {
     "Test" : Enemy(40, 100, {}, {}),
@@ -3813,5 +3826,6 @@ UNITS = {
     "Slosh Ish" : Unit("Slosh Ish", (gs("It's Heavy...!"), gs("It's Churning...!"), gs("Corrosive Splash"))),
     "7 Sang" : Unit("7 Sang", (gs("Flèche"), gs("Riposte"), gs("Moulinet"))),
     "Dead Meur" : Unit("Dead Meur", (gs("Bat Strike"), gs("Smackdown"), gs("Relentless"))),
-    "Molar Sinclair" : Unit("Molar Sinclair", (gs("Fierce Assault"), gs("Steady..."), gs("Gamble")))
+    "Molar Sinclair" : Unit("Molar Sinclair", (gs("Fierce Assault"), gs("Steady..."), gs("Gamble"))),
+    "NCliff" : Unit("NCliff", (gs("Gawky Nailing"), gs("Puri…fy!"), gs("Infirm Retribution")))
     }
