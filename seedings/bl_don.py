@@ -1,3 +1,6 @@
+import sys
+sys.path.append(".")
+
 from math import floor
 import backend
 from backend import Skill, Enemy, Unit
