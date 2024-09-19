@@ -376,7 +376,7 @@ class Skill:
 
 
 
-            ol_mult = (env.ol - enemy.def_level) / (abs(enemy.def_level - env.ol) + 25)
+            ol_mult = (env.ol - env.def_level) / (abs(env.def_level - env.ol) + 25)
             env.static = 1.00 + env.s_res_mod + ol_mult + env.p_res_mod  + (enemy.observation_level * 0.00) + (clash_count * 0.03)
             if did_crit: env.static += env.crit_bonus
 
@@ -395,7 +395,7 @@ class Skill:
 
             if debug:
                 print(f"Coin {i + 1}: power = {env.current_power}({env.base} + {env.coin_power} * {env.current_coin_index + 1}), damage = {env.current_damage}, static = {env.static:0.2f}, dynamic = {env.dynamic}")
-                print(f"phys_res = {env.p_res_mod}, sin_res = {env.s_res_mod}, ol_mult = {ol_mult}\n")
+                print(f"phys_res = {env.p_res_mod}, sin_res = {env.s_res_mod}, ol_mult = {ol_mult} (def_mod = {env.def_level_mod}\n")
 
             env.update_apply_queue()
 
@@ -1940,7 +1940,7 @@ class SpecialSkillEffects:
 
         if op == "add":
             env.add(data["x_name"], total)
-            env.effects[self] = [total, time]  
+            env.effects[self] = [total, time]
 
     def d_add_foreach_y(self : SkillEffect, env : Environment):
         name = self.name
@@ -3744,7 +3744,13 @@ skc.OnCrit(skc.ApplyStatusCount(StatusNames.red_plum_blossom, 1), duration=-1), 
 [skc.OnHit(skc.ApplyStatusCount('Burn', 1, condition = i)) for i in range(3)]], [skc.DAddXForEachY(2, 'coin_power', 6, 'enemy.statuses.Burn.potency', 0, 2)]),
 "Crimson Blaze Fist" : Skill((5, 6, 2), 0, "Crimson Blaze Fist", ("Blunt", "Wrath"), 
 [[skc.OnHit(skc.AddStatusPotForEachY(1, 'Burn', 1, 'enemy.statuses.Burn.potency')), skc.OnHit(skc.ApplyStatus('Burn', 1, 0))], []],
-[skc.DAddXForEachY(1, 'coin_power', 6, 'enemy.statuses.Burn.count')])
+[skc.DAddXForEachY(1, 'coin_power', 6, 'enemy.statuses.Burn.count')]),
+
+"Stay Calm" : Skill((3, 4, 2), -2, "Stay Calm", ("Pierce", "Lust"), [[], []], [skc.GainTremor(2), skc.AddXForEachY(1, 'coin_power', 5, 'unit.tremor')]),
+"Gamble(Yi Sang)" : Skill((4, 12, 1), 2, "Gamble", ("Blunt", "Sloth"), [[]]),
+"Grinding the Molars" : Skill((4, 3, 3), 5, "Grinding the Molars", ("Blunt", "Wrath"), 
+[[skc.OnHit(SkillEffect('enemy.tremor', 'add', 4)), skc.OnHit(skc.AddXForEachY(-1, 'def_level_mod', 4, 'enemy.tremor', -5, 0))], [], []], 
+[skc.ConsumeRessourceTrigger('unit.tremor', 10, 10, skc.CoinPower(2))])  
 }
 ENEMIES = {
     "Test" : Enemy(40, 100, {}, {}),
@@ -3841,5 +3847,6 @@ UNITS = {
     "Molar Sinclair" : Unit("Molar Sinclair", (gs("Fierce Assault"), gs("Steady..."), gs("Gamble"))),
     "NCliff" : Unit("NCliff", (gs("Gawky Nailing"), gs("Puri…fy!"), gs("Infirm Retribution"))),
     "LCCB Rodya" : Unit("LCCB Rodya", (gs("Bludgeon"), gs("Thrust"), gs("Suppress"))),
-    "Liu Hong Lu" : Unit("Liu Hong Lu", (gs("Warm Up"), gs("Flowing Flame"), gs("Crimson Blaze Fist")))
+    "Liu Hong Lu" : Unit("Liu Hong Lu", (gs("Warm Up"), gs("Flowing Flame"), gs("Crimson Blaze Fist"))),
+    "Molar Sang" : Unit("Molar Sang", (gs("Stay Calm"), gs("Gamble(Yi Sang)"), gs("Grinding the Molars")))
     }

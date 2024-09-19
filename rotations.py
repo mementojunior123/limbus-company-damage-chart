@@ -2695,3 +2695,43 @@ def lccb_rodya_rotation(unit : Unit, enemy : Enemy, debug : bool = False, blunt_
     
     if debug: print("-".join(sequence))
     return total
+
+def molar_sang_rotation(unit : Unit, enemy : Enemy, debug : bool = False, unit_tremor : int = 0, enemy_tremor : int = 0):
+    sequence = [None for _ in range(6)]
+    bag = get_bag()
+
+    skills = {1 : unit.skill_1, 2 : unit.skill_2, 3 : unit.skill_3}
+    total = 0
+    unit.tremor = unit_tremor
+    enemy.tremor = enemy_tremor
+
+    for i in range(6):
+        dashboard = [bag[0], bag[1]]
+        a = max(dashboard)
+        b = min(dashboard)
+        decision = a
+        if a == 2:
+            if b == 1:
+                unit.tremor += 4
+                bag.remove(b)
+            else:
+                pass
+        elif a == 3:
+            if b != 3:
+                unit.tremor += 4
+                bag.remove(b)
+        
+        result = skills[decision].calculate_damage(unit, enemy, debug=debug)
+        total += result
+        
+        if debug: print(result)
+        sequence[i] = str(decision)
+        bag.remove(decision)
+
+        
+        
+        if len(bag) < 2:
+            bag += get_bag()
+    
+    if debug: print("-".join(sequence))
+    return total
