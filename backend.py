@@ -3736,7 +3736,15 @@ skc.OnCrit(skc.ApplyStatusCount(StatusNames.red_plum_blossom, 1), duration=-1), 
 
 "Bludgeon" : Skill((5, 6, 1), 5, "Bludgeon", ("Blunt", "Pride"), [[]], [skc.CoinPower(2, 0)]),
 "Thrust" : Skill((6, 1, 2), 5, "Thrust", ("Blunt", "Gluttony"), [[], []], [skc.CoinPower(2, 0)]),
-"Suppress" : Skill((7, 2, 2), 5, "Suppress", ("Blunt", "Envy"), [[skc.OnHit(skc.DefenseLevelDown(4))], []], [skc.CoinPower(3, 0, 1)])
+"Suppress" : Skill((7, 2, 2), 5, "Suppress", ("Blunt", "Envy"), [[skc.OnHit(skc.DefenseLevelDown(4))], []], [skc.CoinPower(3, 0, 1)]),
+
+"Warm Up" : Skill((3, 4, 2), 0, "Warm Up", ("Blunt", "Gloom"), [[], [skc.OnHit(skc.ApplyStatus('Burn', 3, 0))]]),
+"Flowing Flame" : Skill((6, 2, 2), 0, "Flowing Flame", ("Blunt", "Lust"), 
+[[skc.OnHit(skc.AddStatusPotForEachY(1, 'Burn', 1, 'enemy.statuses.Burn.potency')), skc.OnHit(skc.ApplyStatus('Burn', 1, 0))], 
+[skc.OnHit(skc.ApplyStatusCount('Burn', 1, condition = i)) for i in range(3)]], [skc.DAddXForEachY(2, 'coin_power', 6, 'enemy.statuses.Burn.potency', 0, 2)]),
+"Crimson Blaze Fist" : Skill((5, 6, 2), 0, "Crimson Blaze Fist", ("Blunt", "Wrath"), 
+[[skc.OnHit(skc.AddStatusPotForEachY(1, 'Burn', 1, 'enemy.statuses.Burn.potency')), skc.OnHit(skc.ApplyStatus('Burn', 1, 0))], []],
+[skc.DAddXForEachY(1, 'coin_power', 6, 'enemy.statuses.Burn.count')])
 }
 ENEMIES = {
     "Test" : Enemy(40, 100, {}, {}),
@@ -3832,5 +3840,6 @@ UNITS = {
     "Dead Meur" : Unit("Dead Meur", (gs("Bat Strike"), gs("Smackdown"), gs("Relentless"))),
     "Molar Sinclair" : Unit("Molar Sinclair", (gs("Fierce Assault"), gs("Steady..."), gs("Gamble"))),
     "NCliff" : Unit("NCliff", (gs("Gawky Nailing"), gs("Puri…fy!"), gs("Infirm Retribution"))),
-    "LCCB Rodya" : Unit("LCCB Rodya", (gs("Bludgeon"), gs("Thrust"), gs("Suppress")))
+    "LCCB Rodya" : Unit("LCCB Rodya", (gs("Bludgeon"), gs("Thrust"), gs("Suppress"))),
+    "Liu Hong Lu" : Unit("Liu Hong Lu", (gs("Warm Up"), gs("Flowing Flame"), gs("Crimson Blaze Fist")))
     }
