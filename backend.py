@@ -1236,6 +1236,12 @@ class SkillEffectConstructors:
     @staticmethod
     def NCliffS3Bonus():
         return SkillEffect('dynamic', 'add', 0, apply_func=SpecialSkillEffects.NCliffS3Bonus)
+    
+    @staticmethod
+    def LiuGregorPassive():
+        effect = SkillEffect('dynamic', 'add', 0)
+        effect.late_update = SpecialSkillEffects.LiuGregorPassive
+        return effect
 
 class SkillEffect:
     @classmethod
@@ -2852,6 +2858,11 @@ class SpecialSkillEffects:
         bonus : int = floor(env.current_damage * mult)
         env.total += bonus
         env.effects[self] = [bonus, -1]
+
+    def LiuGregorPassive(self : SkillEffect, env : Environment):
+        if not (env.current_coin_index >= 2): return
+        env.enemy.apply_status('Burn', 1, 0)
+
 class SkillConditionals:
     @staticmethod
     def HasEgoHeadsHit(self : SkillEffect, env : Environment) -> bool:
@@ -3750,7 +3761,22 @@ skc.OnCrit(skc.ApplyStatusCount(StatusNames.red_plum_blossom, 1), duration=-1), 
 "Gamble(Yi Sang)" : Skill((4, 12, 1), 2, "Gamble", ("Blunt", "Sloth"), [[]]),
 "Grinding the Molars" : Skill((4, 3, 3), 5, "Grinding the Molars", ("Blunt", "Wrath"), 
 [[skc.OnHit(SkillEffect('enemy.tremor', 'add', 4)), skc.OnHit(skc.AddXForEachY(-1, 'def_level_mod', 4, 'enemy.tremor', -5, 0))], [], []], 
-[skc.ConsumeRessourceTrigger('unit.tremor', 10, 10, skc.CoinPower(2))])  
+[skc.ConsumeRessourceTrigger('unit.tremor', 10, 10, skc.CoinPower(2))]),
+
+"To Me!" : Skill((4, 4, 2), 3, "To Me!", ("Pierce", "Envy"), [[], []]),
+"Pursue Them to the End!" : Skill((4, 4, 3), 3, "Pursue Them to the End!", ("Pierce", "Pride"), [[], [], []], []),
+"Harpoon of Obsession" : Skill((4, 3, 4), 3, "Harpoon of Obsession", ("Pierce", "Wrath"), [[], [], [], []],
+[skc.DAddXForEachY(1, 'coin_power', 5, 'enemy.bleed', 0, 2), skc.AddXForEachY(0.003, 'dynamic', 0.01, 'enemy.missing_hp', 0, 0.3)]),
+
+"Single-point Stab" : Skill((4, 2, 2), 5, "Single-point Stab", ("Blunt", "Wrath"), 
+[[skc.OnHit(skc.ApplyStatus('Burn', 1, 0)), skc.OnHeadsHit(skc.ApplyStatus('Burn', 1, 0))] for _ in range(2)],
+[skc.DAddXForEachY(1, 'coin_power', 6, 'enemy.statuses.Burn.potency')]),
+"Rush Down" : Skill((5, 2, 3), 5, "Rush Down", ("Blunt", "Lust"), 
+[[skc.OnHit(skc.ApplyStatus('Burn', 1, 0))], [skc.OnHit(skc.ApplyStatus('Burn', 1, 0))], [skc.OnHit(skc.ApplyStatus('Burn', 3, 0))]],
+[skc.DAddXForEachY(1, 'coin_power', 6, 'enemy.statuses.Burn.potency')]),
+"Perfected Palm Strike" : Skill((4, 2, 4), 5, "Perfected Palm Strike", ("Blunt", "Sloth"), [[skc.OnHit(skc.ApplyStatus('Burn', 1, 0))], 
+[skc.OnHit(skc.ApplyStatus('Burn', 1, 0))], [skc.OnHit(skc.ApplyStatus('Burn', 1, 0))], [skc.OnHit(skc.ApplyStatus('Burn', 3, 0))]],
+[skc.DAddXForEachY(0.1, 'dynamic', 6, 'enemy.statuses.Burn.potency', 0, 0.1)])
 }
 ENEMIES = {
     "Test" : Enemy(40, 100, {}, {}),
@@ -3848,5 +3874,7 @@ UNITS = {
     "NCliff" : Unit("NCliff", (gs("Gawky Nailing"), gs("Puri…fy!"), gs("Infirm Retribution"))),
     "LCCB Rodya" : Unit("LCCB Rodya", (gs("Bludgeon"), gs("Thrust"), gs("Suppress"))),
     "Liu Hong Lu" : Unit("Liu Hong Lu", (gs("Warm Up"), gs("Flowing Flame"), gs("Crimson Blaze Fist"))),
-    "Molar Sang" : Unit("Molar Sang", (gs("Stay Calm"), gs("Gamble(Yi Sang)"), gs("Grinding the Molars")))
+    "Molar Sang" : Unit("Molar Sang", (gs("Stay Calm"), gs("Gamble(Yi Sang)"), gs("Grinding the Molars"))),
+    "Cap Ish" : Unit("Cap Ish", (gs("To Me!"), gs("Pursue Them to the End!"), gs("Harpoon of Obsession"))),
+    "Liu Gregor" : Unit("Liu Gregor", (gs("Single-point Stab"), gs("Rush Down"), gs("Perfected Palm Strike")))
     }

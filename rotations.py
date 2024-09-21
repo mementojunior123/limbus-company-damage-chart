@@ -2735,3 +2735,85 @@ def molar_sang_rotation(unit : Unit, enemy : Enemy, debug : bool = False, unit_t
     
     if debug: print("-".join(sequence))
     return total
+
+def cap_ish_rotation(unit : Unit, enemy : Enemy, debug : bool = False, start_poise : tuple[int, int] = (0,0), pride_res : int = 0, 
+                     bleed : int = 0, passive_active : bool = False, missing_hp : float = 0):
+    sequence = [None for _ in range(6)]
+    bag = get_bag()
+
+    skills = {1 : unit.skill_1, 2 : unit.skill_2, 3 : unit.skill_3}
+    total = 0
+    if passive_active: unit.apply_unique_effect('passive', backend.skc.DynamicBonus(0.1), True)
+    enemy.bleed = bleed
+    enemy.missing_hp = missing_hp
+    unit.set_poise(*start_poise)
+    for i in range(6):
+        dashboard = [bag[0], bag[1]]
+        a = max(dashboard)
+        b = min(dashboard)
+        decision = a
+       
+        
+        result = skills[decision].calculate_damage(unit, enemy, debug=debug)
+        total += result
+        
+        if debug: print(result)
+        sequence[i] = str(decision)
+        bag.remove(decision)
+        if decision == 2 and pride_res >= randint(1, 5):
+            total += 20 if pride_res < 4 else 26
+
+        
+        
+        if len(bag) < 2:
+            bag += get_bag()
+        
+        unit.consume_poise(1)
+    
+    if debug: print("-".join(sequence))
+    return total
+
+def liu_gregor_passive(unit : Unit, enemy : Enemy, debug : bool = False, start_burn : tuple[int, int] = (0,0), passive_active : bool = False):
+    sequence = [None for _ in range(6)]
+    bag = get_bag()
+
+    skills = {1 : unit.skill_1, 2 : unit.skill_2, 3 : unit.skill_3}
+    total = 0
+
+    enemy.apply_status('Burn', 0, 0)
+    burn_status : backend.StatusEffect = enemy.statuses.Burn
+    burn_status.potency, burn_status.count = start_burn
+    if burn_status.potency <= 0 or burn_status.count <= 0:
+        burn_status.potency = 0
+        burn_status.count = 0
+    
+    if passive_active: unit.apply_unique_effect('passive', backend.skc.LiuGregorPassive(), True)
+    next_atk_powerup : int = 0
+    for i in range(6):
+        dashboard = [bag[0], bag[1]]
+        a = max(dashboard)
+        b = min(dashboard)
+        decision = a
+       
+        
+        result = skills[decision].calculate_damage(unit, enemy, debug=debug, entry_effects=[backend.skc.BasePowerUp(next_atk_powerup)])
+        total += result
+        
+        if debug: print(result)
+        sequence[i] = str(decision)
+        bag.remove(decision)
+
+        next_atk_powerup = 0
+        if decision == 2 and burn_status.potency >= 6:
+            next_atk_powerup = 1
+        
+
+        
+        
+        if len(bag) < 2:
+            bag += get_bag()
+        
+        enemy.on_turn_end()
+    
+    if debug: print("-".join(sequence))
+    return total
