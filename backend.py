@@ -781,7 +781,7 @@ class SkillEffectConstructors:
         return SkillEffectConstructors.ApplyStatus('BM', 0, value, condition)
     
     @staticmethod
-    def ApplyStatus(status_type : str, potency : int, count : int, condition : int = -1):
+    def ApplyStatus(status_type : str, potency : int, count : int = 0, condition : int = -1):
         return sk.new("ApplyStatus", (status_type, potency, count), condition=condition)
     
     @staticmethod
@@ -1242,6 +1242,10 @@ class SkillEffectConstructors:
         effect = SkillEffect('dynamic', 'add', 0)
         effect.late_update = SpecialSkillEffects.LiuGregorPassive
         return effect
+
+    @staticmethod
+    def ButlerFaustPassive():
+        return SkillEffectConstructors.AddStatusPotForEachY(3, 'Sinking', 1, 'enemy.statuses.Echoes of the Manor.count', 1, 3, condition=0)
 
 class SkillEffect:
     @classmethod
@@ -3776,7 +3780,25 @@ skc.OnCrit(skc.ApplyStatusCount(StatusNames.red_plum_blossom, 1), duration=-1), 
 [skc.DAddXForEachY(1, 'coin_power', 6, 'enemy.statuses.Burn.potency')]),
 "Perfected Palm Strike" : Skill((4, 2, 4), 5, "Perfected Palm Strike", ("Blunt", "Sloth"), [[skc.OnHit(skc.ApplyStatus('Burn', 1, 0))], 
 [skc.OnHit(skc.ApplyStatus('Burn', 1, 0))], [skc.OnHit(skc.ApplyStatus('Burn', 1, 0))], [skc.OnHit(skc.ApplyStatus('Burn', 3, 0))]],
-[skc.DAddXForEachY(0.1, 'dynamic', 6, 'enemy.statuses.Burn.potency', 0, 0.1)])
+[skc.DAddXForEachY(0.1, 'dynamic', 6, 'enemy.statuses.Burn.potency', 0, 0.1)]),
+
+"Confiscation" : Skill((3, 4, 2), 1, "Confiscation", ('Slash', 'Gloom'), [[], [skc.OnHit(skc.ApplyStatus('Sinking', 2))]], 
+[skc.AddXForEachY(1, 'coin_power', 6, 'enemy.statuses.Sinking.potency')]),
+"Interloper Reception" : Skill((4, 5, 2), 2, "Interloper Reception", ('Blunt', 'Lust'), 
+[[], [skc.OnHit(skc.ApplyStatusCount('Sinking', 3))]], [skc.AddXForEachY(1, 'coin_power', 3, 'enemy.statuses.Sinking.count')]),
+"RA4: Heartseal" : Skill((4, 2, 4), 4, "RA4: Heartseal", ('Slash', 'Wrath'), 
+[[skc.OnHit(skc.ApplyStatusCount('Sinking', 3))], [], [], [skc.AddStatusCountForEachY(3, 'Sinking', 1, 'enemy.statuses.Echoes of the Manor.count', 0, 3), 
+skc.ApplyStatusCountNextTurn('Echoes of the Manor', 2)]], [skc.AddXForEachY(2, 'coin_power', 5, 'enemy.statuses.Sinking.count', 0, 2)]),
+
+"Intuition" : Skill((3, 4, 2), 1, "Intuition", ("Slash", "Wrath"), 
+[[skc.OnHit(skc.ApplyStatus('Rupture', 1)), skc.OnHeadsHit(skc.ApplyStatus('Rupture', 1))] for _ in range(2)],
+[skc.DAddXForEachY(1, 'coin_power', 6, 'enemy.statuses.Rupture.potency')]),
+"The Wrap-Up" : Skill((6, 10, 1), 1, "The Wrap-Up", ("Pierce", "Envy"), 
+[[skc.OnHit(skc.ApplyStatusCount('Rupture', 2)), skc.OnHit(skc.ApplyStatusCountNextTurn(StatusNames.defense_level_down, 3))]], 
+[skc.ApplyStatusCount('Rupture', 1, 0)]),
+"Forensics" : Skill((4, 2, 4), 1, "Forensics", ("Slash", "Gluttony"), 
+[[skc.OnHit(skc.ApplyStatusCount('Rupture', 3))]] + [[skc.OnHeadsHit(skc.ApplyStatus('Rupture', 1))] for _ in range(3)],
+[skc.DAddXForEachY(1, 'coin_power', 6, 'enemy.statuses.Rupture.potency')])
 }
 ENEMIES = {
     "Test" : Enemy(40, 100, {}, {}),
@@ -3876,5 +3898,7 @@ UNITS = {
     "Liu Hong Lu" : Unit("Liu Hong Lu", (gs("Warm Up"), gs("Flowing Flame"), gs("Crimson Blaze Fist"))),
     "Molar Sang" : Unit("Molar Sang", (gs("Stay Calm"), gs("Gamble(Yi Sang)"), gs("Grinding the Molars"))),
     "Cap Ish" : Unit("Cap Ish", (gs("To Me!"), gs("Pursue Them to the End!"), gs("Harpoon of Obsession"))),
-    "Liu Gregor" : Unit("Liu Gregor", (gs("Single-point Stab"), gs("Rush Down"), gs("Perfected Palm Strike")))
+    "Liu Gregor" : Unit("Liu Gregor", (gs("Single-point Stab"), gs("Rush Down"), gs("Perfected Palm Strike"))),
+    "Butler Faust" : Unit("Butler Faust", (gs("Confiscation"), gs("Interloper Reception"), gs("RA4: Heartseal"))),
+    "7Cliff" : Unit("7Cliff", (gs("Intuition"), gs("The Wrap-Up"), gs("Forensics"))),
     }

@@ -2817,3 +2817,49 @@ def liu_gregor_passive(unit : Unit, enemy : Enemy, debug : bool = False, start_b
     
     if debug: print("-".join(sequence))
     return total
+
+
+def butler_faust_rotation(unit : Unit, enemy : Enemy, debug : bool = False, sinking_start : tuple[int, int] = (0,0), echoes_start : int = 0, 
+                          passive_active : bool = False):
+    sequence = [None for _ in range(6)]
+    bag = get_bag()
+
+    skills = {1 : unit.skill_1, 2 : unit.skill_2, 3 : unit.skill_3}
+    total = 0
+
+    enemy.clear_effects()
+
+    enemy.apply_status('Sinking', *sinking_start)
+    enemy.apply_status(backend.StatusNames.echoes_of_the_manor, 0, echoes_start)
+    if debug: print(enemy.statuses[backend.StatusNames.echoes_of_the_manor].count)
+
+    if passive_active: unit.apply_unique_effect('passive', backend.skc.ButlerFaustPassive(), True)
+    for skill in unit.skills:
+        skill.set_conds([passive_active])
+
+    for i in range(6):    
+        unit.on_turn_start()
+        enemy.on_turn_start()
+        
+        dashboard = [bag[0], bag[1]]
+        a = max(dashboard)
+        b = min(dashboard)
+        decision = a
+        unit.clear_effects()
+        if debug:
+            print(f'Current sinking : {enemy.statuses.Sinking.potency}, {enemy.statuses.Sinking.count}; Current echoes : {enemy.statuses[backend.StatusNames.echoes_of_the_manor].count}')
+
+        result = skills[decision].calculate_damage(unit, enemy, debug=debug)
+        total += result
+        
+        if debug: print(result)
+        sequence[i] = str(decision)
+        bag.remove(decision)
+
+        if len(bag) < 2:
+            bag += get_bag()
+        
+        enemy.on_turn_end()
+    
+    if debug: print("-".join(sequence))
+    return total
