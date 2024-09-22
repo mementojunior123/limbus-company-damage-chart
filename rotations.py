@@ -2863,3 +2863,36 @@ def butler_faust_rotation(unit : Unit, enemy : Enemy, debug : bool = False, sink
     
     if debug: print("-".join(sequence))
     return total
+
+
+def rose_meur_rotation(unit : Unit, enemy : Enemy, debug : bool = False, enemy_tremor_count : int = 0):
+    sequence = [None for _ in range(6)]
+    bag = get_bag()
+
+    skills = {1 : unit.skill_1, 2 : unit.skill_2, 3 : unit.skill_3}
+    total = 0
+    enemy.tremor_count = enemy_tremor_count
+    for i in range(6):
+        dashboard = [bag[0], bag[1]]
+        a = max(dashboard)
+        b = min(dashboard)
+        decision = a
+       
+        
+        result = skills[decision].calculate_damage(unit, enemy, debug=debug)
+        total += result
+        
+        if debug: print(result)
+        sequence[i] = str(decision)
+        bag.remove(decision)
+
+        
+        
+        if len(bag) < 2:
+            bag += get_bag()
+        
+        if enemy.tremor_count > 0: enemy.tremor_count -= 1
+        else: enemy.tremor_count = 0
+    
+    if debug: print("-".join(sequence))
+    return total

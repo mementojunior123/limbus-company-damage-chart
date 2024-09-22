@@ -3829,7 +3829,12 @@ skc.ApplyStatusCountNextTurn('Echoes of the Manor', 2)]], [skc.AddXForEachY(2, '
 "Upper Slash" : Skill((4, 14, 1), 5, "Upper Slash", ("Slash", "Pride"), [[skc.GainStatusNextTurn(StatusNames.atk_power_up, 0, 1, 0)]],
 [skc.AddXForEachY(2, 'base', 1, f'enemy.statuses.{StatusNames.slash_fragile}.count', 0, 2)]),
 "Swash" : Skill((4, 5, 3), 5, "Swash", ("Slash", "Gluttony"), 
-[[skc.OnHit(skc.ApplyStatusCountNextTurn(StatusNames.slash_fragile, 3)), skc.OnHit(skc.ApplyStatusCountNextTurn(StatusNames.slash_fragile, 2, 0))], [], []])
+[[skc.OnHit(skc.ApplyStatusCountNextTurn(StatusNames.slash_fragile, 3)), skc.OnHit(skc.ApplyStatusCountNextTurn(StatusNames.slash_fragile, 2, 0))], [], []]),
+
+"Saddled Tasks" : Skill((4, 6, 1), 1, "Saddled Tasks", ("Blunt", "Gloom"), [[]], [skc.AddXForEachY(2, 'coin_power', 5, 'enemy.tremor_count', 0, 2)]),
+"Forced Break" : Skill((5, 4, 2), 1, "Forced Break", ("Blunt", "Pride"), [[], []], [skc.AddXForEachY(1, 'base', 7, 'enemy.tremor_count')]),
+"Finishing Runup" : Skill((4, 2, 4), 1, "Finishing Runup", ("Blunt", "Sloth"), [[], [], [], [skc.OnHit(SkillEffect('enemy.tremor_count', 'add', -3))]], 
+                          [skc.DAddXForEachY(1, 'coin_power', 10, 'enemy.tremor_count')])
 }
 ENEMIES = {
     "Test" : Enemy(40, 100, {}, {}),
@@ -3934,5 +3939,6 @@ UNITS = {
     "7Cliff" : Unit("7Cliff", (gs("Intuition"), gs("The Wrap-Up"), gs("Forensics"))),
     "N Don" : Unit("N Don", (gs("Rightful Purge"), gs("Enactment!"), gs("Fanatical Judgement"))),
     "Liu Ryo" : Unit("Liu Ryo", (gs("All-out War"), gs("Fiery Knifehand"), gs("Flame Cleave"))),
-    "7 Ryo" : Unit("7 Ryo", (gs("Slash"), gs("Upper Slash"), gs("Swash")))
+    "7 Ryo" : Unit("7 Ryo", (gs("Slash"), gs("Upper Slash"), gs("Swash"))),
+    "Rose Meur" : Unit("Rose Meur", (gs("Saddled Tasks"), gs("Forced Break"), gs("Finishing Runup")))
     }
