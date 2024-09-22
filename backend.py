@@ -3834,7 +3834,16 @@ skc.ApplyStatusCountNextTurn('Echoes of the Manor', 2)]], [skc.AddXForEachY(2, '
 "Saddled Tasks" : Skill((4, 6, 1), 1, "Saddled Tasks", ("Blunt", "Gloom"), [[]], [skc.AddXForEachY(2, 'coin_power', 5, 'enemy.tremor_count', 0, 2)]),
 "Forced Break" : Skill((5, 4, 2), 1, "Forced Break", ("Blunt", "Pride"), [[], []], [skc.AddXForEachY(1, 'base', 7, 'enemy.tremor_count')]),
 "Finishing Runup" : Skill((4, 2, 4), 1, "Finishing Runup", ("Blunt", "Sloth"), [[], [], [], [skc.OnHit(SkillEffect('enemy.tremor_count', 'add', -3))]], 
-                          [skc.DAddXForEachY(1, 'coin_power', 10, 'enemy.tremor_count')])
+[skc.DAddXForEachY(1, 'coin_power', 10, 'enemy.tremor_count')]),
+'''
+"Both of You, Shut Up" : Skill((4, 4, 2), 1, "Both of You, Shut Up", ("Blunt", "Envy"), 
+[[skc.RedRyoS1PenitenceGain()], [skc.GainRedEyes(2), skc.ApplyStatus('Bleed', 1)]]),
+"S.H. / S.F." : Skill((4, 4, 3), 2, "S.H. / S.F.", ("Blunt", "Gloom"), 
+[[skc.GainPenitence(4)], [skc.GainRedEyes(3), skc.ApplyStatus('Bleed', 2)], [skc.RedRyoS2RedEyesGain()]]),
+"Skullbuster" : Skill((5, 4, 3), 3, "Skullbuster", ("Blunt", "Lust"), 
+[[skc.GainPenitence(7), skc.GainRedEyes(7), skc.ApplyStatus('Bleed', 3)], [skc.RedRyoS3PenitenceGain()], []]),
+"Serious Skullbuster" : Skill((5, 4, 3), 5, "Serious Skullbuster", ("Blunt", "Lust"), [[], [], []]),
+''' : 0
 }
 ENEMIES = {
     "Test" : Enemy(40, 100, {}, {}),
@@ -3940,5 +3949,6 @@ UNITS = {
     "N Don" : Unit("N Don", (gs("Rightful Purge"), gs("Enactment!"), gs("Fanatical Judgement"))),
     "Liu Ryo" : Unit("Liu Ryo", (gs("All-out War"), gs("Fiery Knifehand"), gs("Flame Cleave"))),
     "7 Ryo" : Unit("7 Ryo", (gs("Slash"), gs("Upper Slash"), gs("Swash"))),
-    "Rose Meur" : Unit("Rose Meur", (gs("Saddled Tasks"), gs("Forced Break"), gs("Finishing Runup")))
+    "Rose Meur" : Unit("Rose Meur", (gs("Saddled Tasks"), gs("Forced Break"), gs("Finishing Runup"))),
+    #"Red Ryo" : Unit("Red Ryo", (gs("Both of You, Shut Up"), gs("S.H. / S.F."), gs("Skullbuster"), gs("Serious Skullbuster")))
     }
