@@ -394,8 +394,8 @@ class Skill:
             
 
             if debug:
-                print(f"Coin {i + 1}: power = {env.current_power}({env.base} + {env.coin_power} * {env.current_coin_index + 1}), damage = {env.current_damage}, static = {env.static:0.2f}, dynamic = {env.dynamic}")
-                print(f"phys_res = {env.p_res_mod}, sin_res = {env.s_res_mod}, ol_mult = {ol_mult} (def_mod = {env.def_level_mod}\n")
+                print(f"Coin {i + 1}: power = {env.current_power}, damage = {env.current_damage}, static = {env.static:0.2f}, dynamic = {env.dynamic}")
+                print(f"phys_res = {env.p_res_mod}, sin_res = {env.s_res_mod}, ol_mult = {ol_mult}\n")
 
             env.update_apply_queue()
 
@@ -2889,6 +2889,7 @@ class StatusNames:
     offense_level_up = 'Offense Level Up'
     defense_level_down = 'Defense Level Down'
     fragile = "Fragile"
+    atk_power_up = 'Attack Power Up'
 
     photoelectricity = 'Photoelectricity'
     charge_barrier = 'Charge Barrier'
@@ -2942,6 +2943,10 @@ class StatusEffect:
             case 'Defense Level Down':
                 new_effect._has_potency = False
                 new_effect.on_skill_start = SpecialStatusEffects.apply_def_down
+                new_effect.on_turn_end = SpecialStatusEffects.consume_all
+            case 'Attack Power Up':
+                new_effect._has_potency = False
+                new_effect.on_skill_start = SpecialStatusEffects.apply_atk_power_up
                 new_effect.on_turn_end = SpecialStatusEffects.consume_all
             case 'Fragile':
                 new_effect._has_potency = False
@@ -3165,6 +3170,12 @@ class SpecialStatusEffects:
     def apply_ol_up(self : 'StatusEffect', env : Environment, is_defending : bool = True):
         if is_defending: return
         new_effect = skc.OffenseLevelUp(self.count)
+        env.apply_queue.append(new_effect)
+    
+    @staticmethod
+    def apply_atk_power_up(self : 'StatusEffect', env : Environment, is_defending : bool = True):
+        if is_defending: return
+        new_effect = skc.BasePowerUp(self.count)
         env.apply_queue.append(new_effect)
     
     @staticmethod
@@ -3798,7 +3809,27 @@ skc.ApplyStatusCountNextTurn('Echoes of the Manor', 2)]], [skc.AddXForEachY(2, '
 [skc.ApplyStatusCount('Rupture', 1, 0)]),
 "Forensics" : Skill((4, 2, 4), 1, "Forensics", ("Slash", "Gluttony"), 
 [[skc.OnHit(skc.ApplyStatusCount('Rupture', 3))]] + [[skc.OnHeadsHit(skc.ApplyStatus('Rupture', 1))] for _ in range(3)],
-[skc.DAddXForEachY(1, 'coin_power', 6, 'enemy.statuses.Rupture.potency')])
+[skc.DAddXForEachY(1, 'coin_power', 6, 'enemy.statuses.Rupture.potency')]),
+
+"Rightful Purge" : Skill((3, 4, 2), 1, "Rightful Purge", ("Pierce", "Lust"), [[], []]),
+"Enactment!" : Skill((4, 12, 1), 1, "Enactment!", ("Blunt", "Gluttony"), [[skc.AddXForEachY(0.3, 'dynamic', 5, 'enemy.nails', 0, 0.3)]]),
+"Fanatical Judgement" : Skill((5, 3, 3), 1, "Fanatical Judgement", ("Blunt", "Wrath"), [[], [], []]),
+
+"All-out War" : Skill((3, 4, 2), 1, "All-out War", ("Slash", "Gluttony"), 
+[[skc.OnHit(skc.ApplyStatus('Burn', 1))], [skc.OnHeadsHit(skc.ApplyStatus('Burn', 1)), skc.OnHit(skc.ApplyStatus('Burn', 1))]],
+[skc.DAddXForEachY(1, 'coin_power', 10, 'enemy.statuses.Burn.potency')]),
+"Fiery Knifehand" : Skill((4, 5, 2), 1, "Fiery Knifehand", ("Pierce", "Wrath"),
+[[skc.OnHit(skc.ApplyStatus('Burn', 2))], [skc.AddXForEachY(0.5, 'dynamic', 6, 'enemy.statuses.Burn.potency', 0, 0.5)]],
+[skc.DAddXForEachY(1, 'coin_power', 6, 'enemy.statuses.Burn.potency')]),
+"Flame Cleave" : Skill((4, 2, 4), 3, "Flame Cleave", ("Slash", "Lust"), 
+[[skc.OnHit(skc.ApplyStatus('Burn', 1))] for _ in range(3)] + [[skc.AddXForEachY(0.4, 'dynamic', 10, 'enemy.statuses.Burn.potency', 0, 0.4)]],
+[skc.DAddXForEachY(1, 'coin_power', 6, 'enemy.statuses.Burn.potency')]),
+
+"Slash" : Skill((4, 8, 1), 5, "Slash", ("Blunt", "Sloth"), [[]]),
+"Upper Slash" : Skill((4, 14, 1), 5, "Upper Slash", ("Slash", "Pride"), [[skc.GainStatusNextTurn(StatusNames.atk_power_up, 0, 1, 0)]],
+[skc.AddXForEachY(2, 'base', 1, f'enemy.statuses.{StatusNames.slash_fragile}.count', 0, 2)]),
+"Swash" : Skill((4, 5, 3), 5, "Swash", ("Slash", "Gluttony"), 
+[[skc.OnHit(skc.ApplyStatusCountNextTurn(StatusNames.slash_fragile, 3)), skc.OnHit(skc.ApplyStatusCountNextTurn(StatusNames.slash_fragile, 2, 0))], [], []])
 }
 ENEMIES = {
     "Test" : Enemy(40, 100, {}, {}),
@@ -3901,4 +3932,7 @@ UNITS = {
     "Liu Gregor" : Unit("Liu Gregor", (gs("Single-point Stab"), gs("Rush Down"), gs("Perfected Palm Strike"))),
     "Butler Faust" : Unit("Butler Faust", (gs("Confiscation"), gs("Interloper Reception"), gs("RA4: Heartseal"))),
     "7Cliff" : Unit("7Cliff", (gs("Intuition"), gs("The Wrap-Up"), gs("Forensics"))),
+    "N Don" : Unit("N Don", (gs("Rightful Purge"), gs("Enactment!"), gs("Fanatical Judgement"))),
+    "Liu Ryo" : Unit("Liu Ryo", (gs("All-out War"), gs("Fiery Knifehand"), gs("Flame Cleave"))),
+    "7 Ryo" : Unit("7 Ryo", (gs("Slash"), gs("Upper Slash"), gs("Swash")))
     }

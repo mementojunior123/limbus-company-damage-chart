@@ -151,6 +151,7 @@ def effects_rotation(unit : Unit, enemy : Enemy, debug : bool = False, statuses 
         for status in statuses:
             enemy.apply_status(status, *statuses[status])
     for i in range(6):
+        unit.on_turn_start()
         enemy.on_turn_start()
         dashboard = [bag[0], bag[1]]
         a = max(dashboard)
@@ -175,6 +176,7 @@ def effects_rotation(unit : Unit, enemy : Enemy, debug : bool = False, statuses 
             bag += get_bag()
         
         enemy.on_turn_end()
+        unit.on_turn_end()
     
     if debug: print("-".join(sequence))
     return total
