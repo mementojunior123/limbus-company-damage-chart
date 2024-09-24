@@ -871,13 +871,13 @@ class SkillEffectConstructors:
         return sk.new("OnCritRoll", effect, condition=condition)
     
     @staticmethod
-    def HealSp(value : int, duration : int = -1, condition : int = -1):
+    def HealSP(value : int, duration : int = -1, condition : int = -1):
         effect = SkillEffect('unit.sp', 'add', value, duration, condition)
         effect.apply = SpecialSkillEffects.heal_sp
         return effect
     
     @staticmethod
-    def LoseSp(value : int, duration : int = -1, condition : int = -1):
+    def LoseSP(value : int, duration : int = -1, condition : int = -1):
         effect = SkillEffect('unit.sp', 'add', value, duration, condition)
         effect.apply = SpecialSkillEffects.lose_sp
         return effect
@@ -892,7 +892,8 @@ class SkillEffectConstructors:
         return effect
     
     @staticmethod
-    def DAddXForEachY(x_step : float|int, x_name : str, y_step : float|int, y_name : str, min : float|int = 0, max : float|int = 1, offset : float|int = 0,
+    def DAddXForEachY(x_step : float|int, x_name : str|Callable[['SkillEffect', Environment, float|int], None], y_step : float|int, 
+                      y_name : str|Callable[['SkillEffect', Environment], float|int], min : float|int = 0, max : float|int = 1, offset : float|int = 0,
                       condition : int = -1):
         effect = SkillEffect(x_name, "add", x_step, condition= condition, duration=-1, 
         data = {"x_step": x_step, "x_name": x_name, "y_step": y_step, "y_name": y_name, "range": (min, max), "offset" : offset})
@@ -1246,6 +1247,70 @@ class SkillEffectConstructors:
     @staticmethod
     def ButlerFaustPassive():
         return SkillEffectConstructors.AddStatusPotForEachY(3, 'Sinking', 1, 'enemy.statuses.Echoes of the Manor.count', 1, 3, condition=0)
+    
+    @staticmethod
+    def RedEyesGain(count : int):
+        effect = SkillEffect('dynamic', 'add', count, 1, apply_func=SpecialSkillEffects.apply_nothing_wduration)
+        effect.mid_update = SpecialSkillEffects.RedEyesBonus
+        effect.late_update = SpecialSkillEffects.RedEyesGain
+        return effect
+    
+    @staticmethod
+    def PenitenceGain(count : int):
+        effect = SkillEffect('dynamic', 'add', count, 1, apply_func=SpecialSkillEffects.apply_nothing_wduration)
+        effect.mid_update = SpecialSkillEffects.PenitenceBonus
+        effect.late_update = SpecialSkillEffects.PenitenceGain
+        return effect
+    
+    @staticmethod
+    def RedRyoS1PenitenceGain():
+        effect = SkillEffect('dynamic', 'add', 3, 1, apply_func=SpecialSkillEffects.apply_nothing_wduration)
+        effect.mid_update = SpecialSkillEffects.PenitenceBonus
+        effect.late_update = SpecialSkillEffects.PenitenceS1Gain
+        return effect
+    
+    @staticmethod
+    def RedRyoS2RedEyesGain():
+        effect = SkillEffect('dynamic', 'add', 3, 1, apply_func=SpecialSkillEffects.apply_nothing_wduration)
+        effect.mid_update = SpecialSkillEffects.RedEyesBonus
+        effect.late_update = SpecialSkillEffects.RedEyesS2Gain
+        return effect
+    
+    @staticmethod
+    def RedRyoS3PenitenceGain():
+        effect = SkillEffect('dynamic', 'add', 3, 1, apply_func=SpecialSkillEffects.apply_nothing_wduration)
+        effect.mid_update = SpecialSkillEffects.PenitenceBonus
+        effect.late_update = SpecialSkillEffects.PenitenceS3Gain
+        return effect
+    
+    @staticmethod
+    def RedRyoS4PowerGain():
+        return SkillEffect('dynamic', 'add', 0, apply_func=SpecialSkillEffects.RedRyoS4PowerGain)
+    
+    @staticmethod
+    def RedRyoS4AfterAttack():
+        return SkillEffect('dynamic', 'add', 0, apply_func=SpecialSkillEffects.RedRyoS4AfterAttack)
+    
+    @staticmethod
+    def RedRyoS4Bonus():
+        return SkillEffect('dynamic', 'add', 0, apply_func=SpecialSkillEffects.RedRyoS4Bonus)
+    
+    @staticmethod
+    def RedRyoS4Bleed():
+        return SkillEffect('dynamic', 'add', 0, apply_func=SpecialSkillEffects.RedRyoS4Bleed)
+    
+    @staticmethod
+    def RedRyoBaseSpHeal():
+        effect = SkillEffect('dynamic', 'add', 0)
+        effect.late_update = SpecialSkillEffects.RedRyoBaseSpHeal
+        return effect
+    
+    
+    @staticmethod
+    def RedRyoBonusBleed():
+        effect = SkillEffect('dynamic', 'add', 0)
+        effect.on_status_applied = SpecialSkillEffects.RedRyoBonusBleed
+        return effect
 
 class SkillEffect:
     @classmethod
@@ -1960,9 +2025,12 @@ class SpecialSkillEffects:
 
         data = self.special_data
 
-            
+        y_name : str|Callable[[SkillEffect, Environment], float|int] = data['y_name']
+        y_result = env.get(y_name) if type(y_name) == str else y_name(self, env)
+        x_name : str|Callable[[SkillEffect, Environment, float|int], None] = data['x_name']
+        offset : float|int = data['offset']
 
-        increment_count = (env.get(data["y_name"]) - data["offset"]) // data["y_step"]
+        increment_count = (y_result - offset) // data["y_step"]
 
         total = increment_count * data["x_step"]
 
@@ -1970,7 +2038,7 @@ class SpecialSkillEffects:
         if total < my_min: total = my_min
         if total > my_max: total = my_max
         if op == "add" or True:
-            env.add(data["x_name"], total)
+            env.add(x_name, total) if type(x_name) == str else x_name(self, env, total)
             env.effects[self] = [total, time]
         
     def d_add_foreach_y_cleanup(self : SkillEffect, env : Environment):
@@ -2866,6 +2934,120 @@ class SpecialSkillEffects:
     def LiuGregorPassive(self : SkillEffect, env : Environment):
         if not (env.current_coin_index >= 2): return
         env.enemy.apply_status('Burn', 1, 0)
+    
+    def RedEyesGain(self : SkillEffect, env : Environment):
+        if not hasattr(env.unit, 'red_eyes'): env.unit.red_eyes = 0
+        if env.unit.ashes: return
+        env.unit.red_eyes += self.value
+        if env.unit.passive and env.enemy.has_status('Bleed'): env.unit.red_eyes += 1
+        env.unit.red_eyes = clamp(env.unit.red_eyes, 0, 20)
+    
+    def RedEyesBonus(self : SkillEffect, env : Environment):
+        if not env.unit.passive: return
+        bonus : float = (env.unit.red_eyes / 2) * 0.01
+        if env.unit.speed >= 3: bonus += (env.unit.red_eyes / 2) * 0.01
+        env.dynamic += bonus
+        env.effects[self][0] = bonus
+    
+    def RedEyesS2Gain(self : SkillEffect, env : Environment):
+        if not env.enemy.has_status('Bleed'): return
+        if env.unit.ashes: return
+        bleed_potency : int = env.enemy.statuses['Bleed'].potency
+        if not hasattr(env.unit, 'red_eyes'): env.unit.red_eyes = 0
+        env.unit.red_eyes += clamp(bleed_potency // 2, 0, 3)
+        if env.unit.passive and env.enemy.has_status('Bleed'): env.unit.red_eyes += 1
+        env.unit.red_eyes = clamp(env.unit.red_eyes, 0, 20)
+    
+    def PenitenceGain(self : SkillEffect, env : Environment):
+        if not hasattr(env.unit, 'penitence'): env.unit.penitence = 0
+        gain : int = self.value
+        if not env.unit.ashes:
+            env.unit.penitence += gain
+        else:
+            env.unit.sp += gain // 2      
+        env.unit.sp += 2
+        env.unit.clamp_sp()
+        if env.unit.passive and env.unit.sp >= 20: env.unit.penitence += 1
+        env.unit.penitence = clamp(env.unit.penitence, 0, 20)
+    
+    def PenitenceS1Gain(self : SkillEffect, env : Environment):
+        if not hasattr(env.unit, 'penitence'): env.unit.penitence = 0
+        gain : int = 3
+        if env.sequence[env.current_coin_index] == "Heads": gain += 1
+        if env.unit.passive and env.unit.sp >= 20: gain += 1
+        if not env.unit.ashes:
+            env.unit.penitence += gain
+        else:
+            env.unit.sp += gain // 2
+        env.unit.sp += 2
+        env.unit.clamp_sp()
+        env.unit.penitence = clamp(env.unit.penitence, 0, 20)
+    
+    def PenitenceS3Gain(self : SkillEffect, env : Environment):
+        if not hasattr(env.unit, 'penitence'): env.unit.penitence = 0
+        gain : int = 0
+        if env.sequence[env.current_coin_index] == "Heads": gain += 2
+        if env.unit.passive and env.unit.sp >= 20: gain += 1
+        if not env.unit.ashes:
+            env.unit.penitence += gain
+        else:
+            env.unit.sp += gain // 2
+        env.unit.sp += 2
+        env.unit.clamp_sp()
+        env.unit.penitence = clamp(env.unit.penitence, 0, 20)
+    
+    def PenitenceBonus(self : SkillEffect, env : Environment):
+        if not env.unit.passive: return
+        bonus : float = (env.unit.penitence / 2) * 0.01
+        if env.unit.sp > env.enemy.sp: bonus += (env.unit.penitence / 2) * 0.01
+        env.dynamic += bonus
+        env.effects[self][0] = bonus
+    
+    def RedRyoS4PowerGain(self : SkillEffect, env : Environment):
+        eyes : int = env.unit.red_eyes
+        skull : int = env.unit.penitence
+        env.unit.red_eyes = 0
+        env.unit.penitence = 0
+        env.unit.eyes_consumed = eyes
+        env.unit.skull_consumed = skull
+        coin_power_boost : int = clamp(eyes // 5, 0, 4)
+        base_power_boost : int = clamp(skull // 5, 0, 4)
+        env.coin_power += coin_power_boost
+        env.base += base_power_boost
+        env.effects[self] = [(base_power_boost, coin_power_boost), -1]
+    
+    def RedRyoS4Bonus(self : SkillEffect, env : Environment):
+        the_sum : int = env.unit.eyes_consumed + env.unit.skull_consumed
+        bonus : float = clamp(the_sum * 0.04, 0, 1.6)
+        env.dynamic += bonus
+        env.effects[self] = [bonus, -1]
+    
+    def RedRyoS4AfterAttack(self : SkillEffect, env : Environment):
+        env.unit.sp += clamp(env.unit.skull_consumed - 5, 0, 15)
+        env.unit.clamp_sp()
+        env.unit.ashes = 2
+        env.unit.sp -= 15
+        env.unit.clamp_sp()
+        del env.unit.eyes_consumed
+        del env.unit.skull_consumed
+        env.effects[self] = [0, -1]
+    
+    def RedRyoS4Bleed(self : SkillEffect, env : Environment):
+        bleed_applied : int = clamp(env.unit.eyes_consumed - 15, 0, 5)
+        env.enemy.apply_status('Bleed', bleed_applied, 0, env)
+        env.effects[self] = [bleed_applied, -1]
+    
+    def RedRyoBonusBleed(self : SkillEffect, env : Environment, status_type : str, potency : int, count : int):
+        if not env.unit.red_eyes : return
+        if status_type == 'Bleed':
+            bonus_bleed : int = clamp((env.unit.red_eyes // 8) + 1, 1, 3)
+            env.enemy.apply_status(status_type, bonus_bleed, 0)
+    
+    def RedRyoBaseSpHeal(self : SkillEffect, env : Environment):
+        if not env.unit.penitence: return
+        bonus_sp : int = 2 * clamp((env.unit.penitence // 8) + 1, 1, 3)
+        env.unit.sp += bonus_sp
+        env.unit.clamp_sp()
 
 class SkillConditionals:
     @staticmethod
@@ -2873,6 +3055,11 @@ class SkillConditionals:
         if getattr(env.unit, 'ego', False) and env.sequence[env.current_coin_index] == "Heads":
             return True
         return False
+
+class GetterMethods:
+    @staticmethod
+    def RedRyoSum(self : SkillEffect, env : Environment):
+        return env.unit.red_eyes + env.unit.penitence
 
 sk = SkillEffect
 skc = SkillEffectConstructors
@@ -3486,13 +3673,13 @@ sk.new("OnHeadsRoll", sk.new("AddXForEachY", (0.5, "dynamic", 10, "enemy.statuse
  skc.AddXForEachY(1, 'unit.atk_weight', 4, 'unit.coffin', 0, 2), skc.AddXForEachY(1, 'unit.atk_weight', 1, 'unit.horse', 0, 1)]),
 "Requiem" : Skill((6, 6, 2), 5, "Requiem", ("Blunt", "Gloom"), 
 [[skc.OnHit(skc.ApplyStatus(StatusNames.sinking, 0, 4)), skc.HuntCliffS3Sinking()], [skc.OnHit(skc.ApplyStatus(StatusNames.sinking, 3, 0))]],
-[skc.HealSp(10, -1, 0), skc.AddXForEachY(1, 'coin_power', 3, 'enemy.statuses.Sinking.potency', 0, 4), skc.AddXForEachY(0.12, 'dynamic', 1, 'unit.coffin', 0, 1.2),
+[skc.HealSP(10, -1, 0), skc.AddXForEachY(1, 'coin_power', 3, 'enemy.statuses.Sinking.potency', 0, 4), skc.AddXForEachY(0.12, 'dynamic', 1, 'unit.coffin', 0, 1.2),
 SkillEffect('unit.coffin', 'add', 1), SkillEffect('unit.coffin', 'add', 3, condition=1)]),
 "O Dullahan…!" : Skill((5, 4, 2), 3, "O Dullahan…!", ("Slash", "Lust"), [[], [skc.OnHit(skc.ApplyStatus(StatusNames.sinking, 2, 1))]],
                        [skc.AddXForEachY(1, 'coin_power', 3, 'enemy.statuses.Sinking.potency', 0, 2)]),
 "Lament, Mourn, and Despair" : Skill((31, -13, 2), 5, "Lament, Mourn, and Despair", ("Blunt", "Gloom"), 
 [[skc.OnHit(skc.ApplyStatus(StatusNames.sinking, 5, 2))], [skc.HuntCliffS4Bonus(), skc.HuntCliffS4Regen()]], 
-[skc.LoseSp(15), skc.AddXForEachY(1, 'base', 5, 'enemy.statuses.Sinking.potency', 0, 4), skc.AddXForEachY(0.1, 'dynamic', 1, 'unit.coffin', 0, 1), skc.HuntCliffSpBonus(),
+[skc.LoseSP(15), skc.AddXForEachY(1, 'base', 5, 'enemy.statuses.Sinking.potency', 0, 4), skc.AddXForEachY(0.1, 'dynamic', 1, 'unit.coffin', 0, 1), skc.HuntCliffSpBonus(),
  skc.AddXForEachY(0.2, 'dynamic', 1, 'unit.horse', 0, 0.6), SkillEffect('unit.coffin', 'add', 2), SkillEffect('unit.coffin', 'add', 4, condition=0)]),
 
 "Rip" : Skill((5, 6, 1), 0, "Rip", ("Slash", "Envy"), [[skc.OnHit(skc.GainCharge(3))]], [skc.GainCharge(3)]),
@@ -3835,15 +4022,19 @@ skc.ApplyStatusCountNextTurn('Echoes of the Manor', 2)]], [skc.AddXForEachY(2, '
 "Forced Break" : Skill((5, 4, 2), 1, "Forced Break", ("Blunt", "Pride"), [[], []], [skc.AddXForEachY(1, 'base', 7, 'enemy.tremor_count')]),
 "Finishing Runup" : Skill((4, 2, 4), 1, "Finishing Runup", ("Blunt", "Sloth"), [[], [], [], [skc.OnHit(SkillEffect('enemy.tremor_count', 'add', -3))]], 
 [skc.DAddXForEachY(1, 'coin_power', 10, 'enemy.tremor_count')]),
-'''
+#'''
 "Both of You, Shut Up" : Skill((4, 4, 2), 1, "Both of You, Shut Up", ("Blunt", "Envy"), 
-[[skc.RedRyoS1PenitenceGain()], [skc.GainRedEyes(2), skc.ApplyStatus('Bleed', 1)]]),
+[[skc.RedRyoS1PenitenceGain()], [skc.RedEyesGain(2), skc.ApplyStatus('Bleed', 1)]], [skc.DAddXForEachY(1, 'coin_power', 7, 'unit.red_eyes')]),
 "S.H. / S.F." : Skill((4, 4, 3), 2, "S.H. / S.F.", ("Blunt", "Gloom"), 
-[[skc.GainPenitence(4)], [skc.GainRedEyes(3), skc.ApplyStatus('Bleed', 2)], [skc.RedRyoS2RedEyesGain()]]),
+[[skc.PenitenceGain(4)], [skc.RedEyesGain(3), skc.ApplyStatus('Bleed', 2)], [skc.RedRyoS2RedEyesGain()]],
+[skc.DAddXForEachY(1, 'coin_power', 6, 'enemy.statuses.Bleed.potency'), skc.DAddXForEachY(1, 'coin_power', 15, GetterMethods.RedRyoSum)]),
 "Skullbuster" : Skill((5, 4, 3), 3, "Skullbuster", ("Blunt", "Lust"), 
-[[skc.GainPenitence(7), skc.GainRedEyes(7), skc.ApplyStatus('Bleed', 3)], [skc.RedRyoS3PenitenceGain()], []]),
-"Serious Skullbuster" : Skill((5, 4, 3), 5, "Serious Skullbuster", ("Blunt", "Lust"), [[], [], []]),
-''' : 0
+[[skc.PenitenceGain(7), skc.RedEyesGain(7), skc.ApplyStatus('Bleed', 3)], [skc.RedRyoS3PenitenceGain()], [
+skc.OnHit(skc.AddXForEachY(-15, 'unit.sp', 45, 'unit.sp', -15, 0))]], 
+[skc.AddXForEachY(1, 'coin_power', 45, 'unit.sp'), skc.AddXForEachY(1, 'coin_power', 1, 'unit.speed')]),
+"Serious Skullbuster" : Skill((5, 4, 3), 5, "Serious Skullbuster", ("Blunt", "Lust"), 
+[[skc.OnHit(skc.RedRyoS4Bleed())], [], [skc.RedRyoS4Bonus(), skc.OnHit(skc.RedRyoS4AfterAttack())]], [skc.RedRyoS4PowerGain()]),
+#''' : 0
 }
 ENEMIES = {
     "Test" : Enemy(40, 100, {}, {}),
@@ -3950,5 +4141,5 @@ UNITS = {
     "Liu Ryo" : Unit("Liu Ryo", (gs("All-out War"), gs("Fiery Knifehand"), gs("Flame Cleave"))),
     "7 Ryo" : Unit("7 Ryo", (gs("Slash"), gs("Upper Slash"), gs("Swash"))),
     "Rose Meur" : Unit("Rose Meur", (gs("Saddled Tasks"), gs("Forced Break"), gs("Finishing Runup"))),
-    #"Red Ryo" : Unit("Red Ryo", (gs("Both of You, Shut Up"), gs("S.H. / S.F."), gs("Skullbuster"), gs("Serious Skullbuster")))
+    "Red Ryo" : Unit("Red Ryo", (gs("Both of You, Shut Up"), gs("S.H. / S.F."), gs("Skullbuster"), gs("Serious Skullbuster")))
     }

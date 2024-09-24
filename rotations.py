@@ -2896,3 +2896,57 @@ def rose_meur_rotation(unit : Unit, enemy : Enemy, debug : bool = False, enemy_t
     
     if debug: print("-".join(sequence))
     return total
+
+def red_ryo_rotation(unit : Unit, enemy : Enemy, debug : bool = False, start_eyes : int = 0, start_skull : int = 0, passive_active : bool = False, 
+                     start_bleed : tuple[int, int] = (0,0), bleed_decay : int = 0, speed_diff : int = 0, enemy_sp : int = 0):
+    sequence = [None for _ in range(6)]
+    bag = get_bag()
+
+    skills = {1 : unit.skill_1, 2 : unit.skill_2, 3 : unit.skill_3, 4 : unit.extra_skills[0]}
+    total = 0
+
+    unit.red_eyes = start_eyes
+    unit.penitence = start_skull
+    unit.passive = passive_active
+    
+    unit.speed = speed_diff
+    enemy.sp = enemy_sp
+
+    unit.apply_unique_effect('base_passive1', backend.skc.RedRyoBaseSpHeal(), True)
+    unit.apply_unique_effect('base_passive2', backend.skc.RedRyoBonusBleed(), True)
+    unit.ashes = 0
+
+    enemy.apply_status('Bleed', 0, 0)
+    the_bleed : backend.StatusEffect = enemy.statuses['Bleed']
+    the_bleed.potency, the_bleed.count = start_bleed    
+
+    for i in range(6):
+        dashboard = [bag[0], bag[1]]
+        a = max(dashboard)
+        b = min(dashboard)
+        decision = a
+        if decision == 3 and unit.red_eyes >= 15 and unit.penitence >= 15:
+            decision = 4
+        elif decision == 3:
+            decision = b
+       
+        unit.sp += 12
+        unit.clamp_sp()
+        result = skills[decision].calculate_damage(unit, enemy, debug=debug)
+        total += result
+        
+        if debug: print(f'{result} (After attack : {unit.red_eyes} eyes, {unit.penitence} skulls)\n')
+        sequence[i] = str(decision)
+        bag.remove(decision if decision != 4 else 3)
+
+        
+        
+        if len(bag) < 2:
+            bag += get_bag()
+        
+        if unit.ashes: unit.ashes -= 1
+        the_bleed.consume_count(bleed_decay)
+
+    
+    if debug: print("-".join(sequence))
+    return total
