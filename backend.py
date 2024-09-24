@@ -847,6 +847,14 @@ class SkillEffectConstructors:
         return SkillEffect('unit.tremor', 'add', count, condition=condition)
     
     @staticmethod
+    def InflictTremor(potency : int, condition : int = -1):
+        return SkillEffect('enemy.tremor', 'add', potency, condition=condition)
+
+    @staticmethod
+    def InflictTremorCount(count : int, condition : int = -1):
+        return SkillEffect('enemy.tremor_count', 'add', count, condition=condition)
+    
+    @staticmethod
     def ConsumeChargeTrigger(count : int, effect : 'SkillEffect', condition : int = -1):
         return sk.new("ConsumeChargeTrigger", (count, effect), condition=condition)
 
@@ -1311,6 +1319,10 @@ class SkillEffectConstructors:
         effect = SkillEffect('dynamic', 'add', 0)
         effect.on_status_applied = SpecialSkillEffects.RedRyoBonusBleed
         return effect
+    
+    @staticmethod
+    def YuroRyoS2Count():
+        return SkillEffect('dynamic', 'add', 0, apply_func=SpecialSkillEffects.YuroRyoS2Count)
 
 class SkillEffect:
     @classmethod
@@ -3049,6 +3061,12 @@ class SpecialSkillEffects:
         env.unit.sp += bonus_sp
         env.unit.clamp_sp()
 
+    def YuroRyoS2Count(self : SkillEffect, env : Environment):
+        transfer : int = clamp(env.unit.tremor, 0, 5)
+        env.enemy.tremor_count += transfer
+        env.unit.tremor -= transfer
+        env.effects[self] = [transfer, -1]
+
 class SkillConditionals:
     @staticmethod
     def HasEgoHeadsHit(self : SkillEffect, env : Environment) -> bool:
@@ -3428,40 +3446,24 @@ class SkillTagNames:
 dgt = DamageTypes
 
 SKILLS = {
-"Coerced Judgement" : Skill((8, -2, 2), 5, 'Coerced Judgement', ("Blunt", "Gloom"), 
-                            [[], [sk.new("OnTailsHit", skc.ApplyFanatic(1))]]),
-"Amoral Enactement" : Skill((16, -4, 4), 5, "Amoral Enactement", ("Blunt", "Lust"),
-                            [[], [], [], []], [SkillEffect("dynamic", "add", 0.10, condition=0)]),
-"Self-Destrutive Purge" : Skill((30, -12, 3), 5, "Self-Destrutive Purge", ("Blunt", "Wrath"), 
-                                [[], [], []], [SkillEffect("dynamic", "add", 0.15, condition=0)]),
+"Coerced Judgement" : Skill((8, -2, 2), 5, 'Coerced Judgement', ("Blunt", "Gloom"), [[], [sk.new("OnTailsHit", skc.ApplyFanatic(1))]]),
+"Amoral Enactement" : Skill((16, -4, 4), 5, "Amoral Enactement", ("Blunt", "Lust"), [[], [], [], []], [SkillEffect("dynamic", "add", 0.10, condition=0)]),
+"Self-Destrutive Purge" : Skill((30, -12, 3), 5, "Self-Destrutive Purge", ("Blunt", "Wrath"), [[], [], []], [SkillEffect("dynamic", "add", 0.15, condition=0)]),
 
 
 
-"Remise" : Skill((3, 4, 2), 2, "Remise", ("Pierce", "Gluttony"), 
-                 [[], []], 
-[sk.new("GainPoise", (0, 2)), 
- sk.new("AddXForEachY", (1, "coin_power", 2, "unit.speed", (0,1)))
- ]),
-
-"Engagement" : Skill((4, 4, 3), 2, "Engagement", ("Pierce", "Pride"), 
-                     [[sk.new("GainPoise", (0, 1))], [sk.new("GainPoise", (0, 1))], []], 
-[sk.new("GainPoise", (0, 2), condition=0), 
- sk.new("AddXForEachY", (1, "coin_power", 2, "unit.speed", (0,2)))
- ]),
-
+"Remise" : Skill((3, 4, 2), 2, "Remise", ("Pierce", "Gluttony"), [[], []], [sk.new("GainPoise", (0, 2)), skc.AddXForEachY(1, "coin_power", 2, "unit.speed")]),
+"Engagement" : Skill((4, 4, 3), 2, "Engagement", ("Pierce", "Pride"), [[sk.new("GainPoise", (0, 1))], [sk.new("GainPoise", (0, 1))], []], 
+[sk.new("GainPoise", (0, 2), condition=0), sk.new("AddXForEachY", (1, "coin_power", 2, "unit.speed", (0,2)))]),
 "Contre Attaque" : Skill((5, 4, 3), 2, "Contre Attaque", ("Pierce", "Lust"), 
 [[sk.new("Fragile", 1, condition=1)],[sk.new("Fragile", 1 , condition=1)], [sk.new("CinqClairS3CritBonus", None)]], 
-[sk.new('CinqClairS3Conversion', None, condition=0), 
- sk.new("AddXForEachY", (1, "coin_power", 2, "unit.speed", (0,3)))
- ]),
+[sk.new('CinqClairS3Conversion', None, condition=0), sk.new("AddXForEachY", (1, "coin_power", 2, "unit.speed", (0,3)))]),
 
 
-"Graze The Grass" : Skill((4, 2, 3), 5, "Graze The Grass", ("Pierce", "Wrath"),
-                          [[], [], []]),
-"Concentrated Fire" : Skill((4, 2, 4), 5, "Concentrated Fire", ("Pierce", "Gluttony"),
-                          [[], [], [], []], [sk.new("CoinPower", 1, condition=0)]),
+"Graze The Grass" : Skill((4, 2, 3), 5, "Graze The Grass", ("Pierce", "Wrath"), [[], [], []]),
+"Concentrated Fire" : Skill((4, 2, 4), 5, "Concentrated Fire", ("Pierce", "Gluttony"), [[], [], [], []], [sk.new("CoinPower", 1, condition=0)]),
 "Quick Suppression" : Skill((3, 2, 5), 5, "Quick Suppression", ("Pierce", "Envy"),
-                          [[sk.new("Fragile", 2)], [sk.new("Fragile", 2)], [], [], []], [sk.new("CoinPower", 2, condition=0)]),
+[[sk.new("Fragile", 2)], [sk.new("Fragile", 2)], [], [], []], [sk.new("CoinPower", 2, condition=0)]),
 
 
 "Mind Strike" : Skill((4, 5, 2), 1, "Mind Strike", ("Blunt", "Gloom"), 
@@ -4022,7 +4024,7 @@ skc.ApplyStatusCountNextTurn('Echoes of the Manor', 2)]], [skc.AddXForEachY(2, '
 "Forced Break" : Skill((5, 4, 2), 1, "Forced Break", ("Blunt", "Pride"), [[], []], [skc.AddXForEachY(1, 'base', 7, 'enemy.tremor_count')]),
 "Finishing Runup" : Skill((4, 2, 4), 1, "Finishing Runup", ("Blunt", "Sloth"), [[], [], [], [skc.OnHit(SkillEffect('enemy.tremor_count', 'add', -3))]], 
 [skc.DAddXForEachY(1, 'coin_power', 10, 'enemy.tremor_count')]),
-#'''
+
 "Both of You, Shut Up" : Skill((4, 4, 2), 1, "Both of You, Shut Up", ("Blunt", "Envy"), 
 [[skc.RedRyoS1PenitenceGain()], [skc.RedEyesGain(2), skc.ApplyStatus('Bleed', 1)]], [skc.DAddXForEachY(1, 'coin_power', 7, 'unit.red_eyes')]),
 "S.H. / S.F." : Skill((4, 4, 3), 2, "S.H. / S.F.", ("Blunt", "Gloom"), 
@@ -4034,7 +4036,14 @@ skc.OnHit(skc.AddXForEachY(-15, 'unit.sp', 45, 'unit.sp', -15, 0))]],
 [skc.AddXForEachY(1, 'coin_power', 45, 'unit.sp'), skc.AddXForEachY(1, 'coin_power', 1, 'unit.speed')]),
 "Serious Skullbuster" : Skill((5, 4, 3), 5, "Serious Skullbuster", ("Blunt", "Lust"), 
 [[skc.OnHit(skc.RedRyoS4Bleed())], [], [skc.RedRyoS4Bonus(), skc.OnHit(skc.RedRyoS4AfterAttack())]], [skc.RedRyoS4PowerGain()]),
-#''' : 0
+
+"Got a Screw Loose?" : Skill((3, 4, 2), 1, "Got a Screw Loose?", ("Blunt", "Lust"), 
+[[skc.OnHit(skc.AddXForEachY(1, 'unit.tremor', 1, 'enemy.tremor_count', 0, 4))], [skc.OnHit(skc.InflictTremorCount(2))]], [skc.GainTremor(2)]),
+"Compression Wind-up Spanner" : Skill((4, 3, 3), 1, "Compression Wind-up Spanner", ("Pierce", "Sloth"),
+[[], [skc.OnHit(skc.InflictTremorCount(1))], [skc.OnHit(skc.YuroRyoS2Count())]], [skc.GainTremor(2), skc.DAddXForEachY(1, 'coin_power', 4, 'unit.tremor')]),
+"Percussive Maintenance" : Skill((4, 3, 3), 1, "Percussive Maintenance", ("Pierce", "Gluttony"),
+[[skc.OnHit(skc.InflictTremor(2))], [skc.OnHit(skc.InflictTremor(2))], [skc.OnHit(SkillEffect('enemy.tremor_count', 'add', -1))]],
+[skc.GainTremor(2), skc.ConsumeRessourceTrigger('unit.tremor', 8, 8, skc.CoinPower(1)), skc.DAddXForEachY(1, 'coin_power', 6, 'enemy.tremor')])
 }
 ENEMIES = {
     "Test" : Enemy(40, 100, {}, {}),
@@ -4141,5 +4150,6 @@ UNITS = {
     "Liu Ryo" : Unit("Liu Ryo", (gs("All-out War"), gs("Fiery Knifehand"), gs("Flame Cleave"))),
     "7 Ryo" : Unit("7 Ryo", (gs("Slash"), gs("Upper Slash"), gs("Swash"))),
     "Rose Meur" : Unit("Rose Meur", (gs("Saddled Tasks"), gs("Forced Break"), gs("Finishing Runup"))),
-    "Red Ryo" : Unit("Red Ryo", (gs("Both of You, Shut Up"), gs("S.H. / S.F."), gs("Skullbuster"), gs("Serious Skullbuster")))
+    "Red Ryo" : Unit("Red Ryo", (gs("Both of You, Shut Up"), gs("S.H. / S.F."), gs("Skullbuster"), gs("Serious Skullbuster"))),
+    "Yuro Ryo" : Unit("Yuro Ryo", (gs("Got a Screw Loose?"), gs("Compression Wind-up Spanner"), gs("Percussive Maintenance")))
     }

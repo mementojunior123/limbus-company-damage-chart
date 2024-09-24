@@ -2944,9 +2944,44 @@ def red_ryo_rotation(unit : Unit, enemy : Enemy, debug : bool = False, start_eye
         if len(bag) < 2:
             bag += get_bag()
         
-        if unit.ashes: unit.ashes -= 1
+        if unit.ashes > 0: unit.ashes -= 1
         the_bleed.consume_count(bleed_decay)
 
+    
+    if debug: print("-".join(sequence))
+    return total
+
+def yuro_ryo_rotation(unit : Unit, enemy : Enemy, debug : bool = False, unit_tremor : int = 0, enemy_tremor : tuple[int, int] = (0,0)):
+    sequence = [None for _ in range(6)]
+    bag = get_bag()
+
+    skills = {1 : unit.skill_1, 2 : unit.skill_2, 3 : unit.skill_3}
+    total = 0
+    unit.tremor = unit_tremor
+    enemy.tremor = enemy_tremor[0]
+    enemy.tremor_count = enemy_tremor[1]
+    for i in range(6):
+        dashboard = [bag[0], bag[1]]
+        a = max(dashboard)
+        b = min(dashboard)
+        decision = a
+        if unit.tremor < 6 and decision == 3:
+            decision = b
+       
+        
+        result = skills[decision].calculate_damage(unit, enemy, debug=debug)
+        total += result
+        
+        if debug: print(result)
+        sequence[i] = str(decision)
+        bag.remove(decision)
+
+        
+        
+        if len(bag) < 2:
+            bag += get_bag()
+        if enemy.tremor_count > 0: enemy.tremor_count -= 1
+        if unit.tremor > 0 : unit.tremor -= 1
     
     if debug: print("-".join(sequence))
     return total
