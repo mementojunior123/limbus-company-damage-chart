@@ -4117,7 +4117,11 @@ skc.OnHit(skc.AddXForEachY(-15, 'unit.sp', 45, 'unit.sp', -15, 0))]],
 "Dismember" : Skill((6, 10, 1), 5, "Dismember", ("Slash", "Sloth"), 
 [[skc.OnHit(skc.ApplyStatus('Rupture', 5))]], [skc.DAddXForEachY(0.5, 'dynamic', 5, 'enemy.statuses.Rupture.potency', 0, 0.5)]),
 "Eviscerate" : Skill((4, 2, 4), 5, "Eviscerate", ("Pierce", "Lust"),
-[[skc.OnHit(skc.GCorpGregorS3Bonus())] for _ in range(3)] + [[]], [skc.DAddXForEachY(1, 'coin_power', 5, 'enemy.statuses.Rupture.potency')])
+[[skc.OnHit(skc.GCorpGregorS3Bonus())] for _ in range(3)] + [[]], [skc.DAddXForEachY(1, 'coin_power', 5, 'enemy.statuses.Rupture.potency')]),
+
+"Keep It Fresh" : Skill((4, 2, 2), 1, "Keep It Fresh", ("Blunt", "Lust"), [[], []], [skc.DynamicBonus(0.3, 0)]),
+"You Fresh Enough?" : Skill((6, 8, 1), 0, "You Fresh Enough?", ("Slash", "Gluttony"), [[]], [skc.CoinPower(3, 0)]),
+"Butcher Viand" : Skill((5, 1, 4), 3, "Butcher Viand", ("Slash", "Envy"), [[] for _ in range(4)], [skc.CoinPower(1, 0)])
 }
 ENEMIES = {
     "Test" : Enemy(40, 100, {}, {}),
@@ -4229,5 +4233,6 @@ UNITS = {
     "LCR Faust" : Unit("LCR Faust", (gs("Sole Strike"), gs("Deep Cuts"), gs("Opportunistic Slash"))),
     "Rose Rodya" : Unit("Rose Rodya", (gs("Rev Up"), gs("Vibration Compression"), gs("Let's Rack Up Some Scores"))),
     "Bl Outis" : Unit("Bl Outis", (gs("Draw of the Sword(Outis)"), gs("Acupuncture(Outis)"), gs("Decisive Dive"))),
-    "G Gregor" : Unit("G Gregor", (gs("Hack"), gs("Dismember"), gs("Eviscerate")))
+    "G Gregor" : Unit("G Gregor", (gs("Hack"), gs("Dismember"), gs("Eviscerate"))),
+    "Chef Gregor" : Unit("Chef Gregor", (gs("Keep It Fresh"), gs("You Fresh Enough?"), gs("Butcher Viand")))
     }
