@@ -1338,6 +1338,10 @@ class SkillEffectConstructors:
     @staticmethod
     def YuroRyoS2Count():
         return SkillEffect('dynamic', 'add', 0, apply_func=SpecialSkillEffects.YuroRyoS2Count)
+    
+    @staticmethod
+    def GCorpGregorS3Bonus():
+        return SkillEffect('dynamic', 'add', 0, apply_func=SpecialSkillEffects.GCorpGregorS3Bonus)
 
 class SkillEffect:
     @classmethod
@@ -3082,6 +3086,12 @@ class SpecialSkillEffects:
         env.unit.tremor -= transfer
         env.effects[self] = [transfer, -1]
 
+    def GCorpGregorS3Bonus(self : SkillEffect, env : Environment):
+        mult : float = 0.3 if env.enemy.has_status('Rupture') else 0.0
+        bonus : int = floor(env.current_damage * mult)
+        env.total += bonus
+        env.effects[self] = [bonus, -1]
+
 class SkillConditionals:
     @staticmethod
     def HasEgoHeadsHit(self : SkillEffect, env : Environment) -> bool:
@@ -4100,7 +4110,14 @@ skc.OnHit(skc.AddXForEachY(-15, 'unit.sp', 45, 'unit.sp', -15, 0))]],
 [[skc.OnHit(skc.GainPoise(4))]], [skc.DAddXForEachY(1, 'coin_power', 5, 'unit.poise_potency')]),
 "Acupuncture(Outis)" : Skill((5, 4, 2), 1, "Acupuncture(Outis)", ("Pierce", "Lust"), [[], [skc.OnHeadsHit(skc.GainStatusNextTurn(StatusNames.slash_dmg_up, 0, 2))]],
 [skc.GainPoiseCount(2, 0)]),
-"Decisive Dive" : Skill((6, 4, 2), 1, "Decisive Dive", ("Slash", "Pride"), [[], []], [skc.BasePowerUp(2, 0)])
+"Decisive Dive" : Skill((6, 4, 2), 1, "Decisive Dive", ("Slash", "Pride"), [[], []], [skc.BasePowerUp(2, 0)]),
+
+"Hack" : Skill((4, 3, 2), 5, "Hack", ("Slash", "Gluttony"), [[], []], 
+[skc.DynamicBonus(0.4, 0), skc.DAddXForEachY(1, 'coin_power', 5, 'enemy.statuses.Rupture.potency')]),
+"Dismember" : Skill((6, 10, 1), 5, "Dismember", ("Slash", "Sloth"), 
+[[skc.OnHit(skc.ApplyStatus('Rupture', 5))]], [skc.DAddXForEachY(0.5, 'dynamic', 5, 'enemy.statuses.Rupture.potency', 0, 0.5)]),
+"Eviscerate" : Skill((4, 2, 4), 5, "Eviscerate", ("Pierce", "Lust"),
+[[skc.OnHit(skc.GCorpGregorS3Bonus())] for _ in range(3)] + [[]], [skc.DAddXForEachY(1, 'coin_power', 5, 'enemy.statuses.Rupture.potency')])
 }
 ENEMIES = {
     "Test" : Enemy(40, 100, {}, {}),
@@ -4211,5 +4228,6 @@ UNITS = {
     "Yuro Ryo" : Unit("Yuro Ryo", (gs("Got a Screw Loose?"), gs("Compression Wind-up Spanner"), gs("Percussive Maintenance"))),
     "LCR Faust" : Unit("LCR Faust", (gs("Sole Strike"), gs("Deep Cuts"), gs("Opportunistic Slash"))),
     "Rose Rodya" : Unit("Rose Rodya", (gs("Rev Up"), gs("Vibration Compression"), gs("Let's Rack Up Some Scores"))),
-    "Bl Outis" : Unit("Bl Outis", (gs("Draw of the Sword(Outis)"), gs("Acupuncture(Outis)"), gs("Decisive Dive")))
+    "Bl Outis" : Unit("Bl Outis", (gs("Draw of the Sword(Outis)"), gs("Acupuncture(Outis)"), gs("Decisive Dive"))),
+    "G Gregor" : Unit("G Gregor", (gs("Hack"), gs("Dismember"), gs("Eviscerate")))
     }
