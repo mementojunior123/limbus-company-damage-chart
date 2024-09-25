@@ -46,6 +46,7 @@ def simple_poise_rotation(unit : Unit, enemy : Enemy, debug : bool = False, star
     unit.set_poise(*start_poise)
 
     for i in range(6):
+        unit.on_turn_start()
         dashboard = [bag[0], bag[1]]
         a = max(dashboard)
         b = min(dashboard)
@@ -65,6 +66,7 @@ def simple_poise_rotation(unit : Unit, enemy : Enemy, debug : bool = False, star
             bag += get_bag()
         
         unit.consume_poise(1)
+        unit.on_turn_end()
     
     if debug: print("-".join(sequence))
     return total

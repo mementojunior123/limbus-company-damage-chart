@@ -819,16 +819,24 @@ class SkillEffectConstructors:
         return sk.new("GainStatusNextTurn", (status_type, potency, count), condition=condition)
     
     @staticmethod
-    def GainPoise(potency : int, count : int, condition : int = -1):
+    def GainPoise(potency : int, count : int = 0, condition : int = -1):
         effect = SkillEffect("dynamic", 'add', 0, condition=condition, data=[potency, count])
         effect.apply = SpecialSkillEffects.gain_poise
         return effect
     
     @staticmethod
-    def GainPoiseNextTurn(potency : int, count : int, condition : int = -1):
+    def GainPoiseNextTurn(potency : int, count : int = 0, condition : int = -1):
         effect = SkillEffect("dynamic", 'add', 0, condition=condition, data=[potency, count])
         effect.apply = SpecialSkillEffects.gain_poise_next_turn
         return effect
+    
+    @staticmethod
+    def GainPoiseCount(count : int, condition : int = -1):
+        return SkillEffectConstructors.GainPoise(0, count, condition)
+    
+    @staticmethod
+    def GainPoiseCountNextTurn(count : int, condition : int = -1):
+        return SkillEffectConstructors.GainPoiseNextTurn(0, count, condition)
     
     @staticmethod
     def GainAdditionalPoise(potency : int, count : int, condition : int = -1):
@@ -877,6 +885,13 @@ class SkillEffectConstructors:
     @staticmethod
     def OnCritRoll(effect : 'SkillEffect', condition : int = -1):
         return sk.new("OnCritRoll", effect, condition=condition)
+    
+    @staticmethod
+    def AfterAttack(effect_to_trigger : 'SkillEffect', condition : int = -1):
+        effect = SkillEffect("dynamic", "add", 0, condition= condition, duration=1)
+        effect.on_skill_end = SpecialSkillEffects.on_hit_trigger
+        effect.special_data = effect_to_trigger
+        return effect
     
     @staticmethod
     def HealSP(value : int, duration : int = -1, condition : int = -1):
@@ -1030,8 +1045,8 @@ class SkillEffectConstructors:
         return sk.new("CounterBasepowerGain", None)
     
     @staticmethod
-    def ResetAttackWeight(condition : int = -1):
-        return sk.new("ResetAttackWeight", None, condition=condition)
+    def ResetAttackWeight(count : int = 1, condition : int = -1):
+        return sk.new("ResetAttackWeight", count, condition=condition)
     
     @staticmethod
     def RegretBurst():
@@ -4043,7 +4058,11 @@ skc.OnHit(skc.AddXForEachY(-15, 'unit.sp', 45, 'unit.sp', -15, 0))]],
 [[], [skc.OnHit(skc.InflictTremorCount(1))], [skc.OnHit(skc.YuroRyoS2Count())]], [skc.GainTremor(2), skc.DAddXForEachY(1, 'coin_power', 4, 'unit.tremor')]),
 "Percussive Maintenance" : Skill((4, 3, 3), 1, "Percussive Maintenance", ("Pierce", "Gluttony"),
 [[skc.OnHit(skc.InflictTremor(2))], [skc.OnHit(skc.InflictTremor(2))], [skc.OnHit(SkillEffect('enemy.tremor_count', 'add', -1))]],
-[skc.GainTremor(2), skc.ConsumeRessourceTrigger('unit.tremor', 8, 8, skc.CoinPower(1)), skc.DAddXForEachY(1, 'coin_power', 6, 'enemy.tremor')])
+[skc.GainTremor(2), skc.ConsumeRessourceTrigger('unit.tremor', 8, 8, skc.CoinPower(1)), skc.DAddXForEachY(1, 'coin_power', 6, 'enemy.tremor')]),
+
+"Sole Strike" : Skill((3, 8, 1), 3, "Sole Strike", ("Slash", "Lust"), [[]], [skc.GainPoiseCount(2)]),
+"Deep Cuts" : Skill((5, 3, 3), 3, "Deep Cuts", ("Pierce", "Gloom"), [[skc.OnHit(skc.GainPoiseNextTurn(1))] for _ in range(3)]),
+"Opportunistic Slash" : Skill((4, 8, 2), 3, "Opportunistic Slash", ("Slash", "Envy"), [[], []], [skc.CoinPower(3, 0)]),
 }
 ENEMIES = {
     "Test" : Enemy(40, 100, {}, {}),
@@ -4151,5 +4170,6 @@ UNITS = {
     "7 Ryo" : Unit("7 Ryo", (gs("Slash"), gs("Upper Slash"), gs("Swash"))),
     "Rose Meur" : Unit("Rose Meur", (gs("Saddled Tasks"), gs("Forced Break"), gs("Finishing Runup"))),
     "Red Ryo" : Unit("Red Ryo", (gs("Both of You, Shut Up"), gs("S.H. / S.F."), gs("Skullbuster"), gs("Serious Skullbuster"))),
-    "Yuro Ryo" : Unit("Yuro Ryo", (gs("Got a Screw Loose?"), gs("Compression Wind-up Spanner"), gs("Percussive Maintenance")))
+    "Yuro Ryo" : Unit("Yuro Ryo", (gs("Got a Screw Loose?"), gs("Compression Wind-up Spanner"), gs("Percussive Maintenance"))),
+    "LCR Faust" : Unit("LCR Faust", (gs("Sole Strike"), gs("Deep Cuts"), gs("Opportunistic Slash"))),
     }
