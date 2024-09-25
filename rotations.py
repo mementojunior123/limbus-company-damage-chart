@@ -3030,3 +3030,46 @@ def rose_rodya_rotation(unit : Unit, enemy : Enemy, debug : bool = False, start_
     
     if debug: print("-".join(sequence))
     return total
+
+def bl_outis_rotation(unit : Unit, enemy : Enemy, debug : bool = False, start_poise : tuple[int, int] = (0,0), passive_active : bool = True, 
+                      missing_hp : float = 0, bl_meur : int = 0):
+    sequence = [None for _ in range(6)]
+    bag = get_bag()
+
+    skills = {1 : unit.skill_1, 2 : unit.skill_2, 3 : unit.skill_3}
+    total = 0
+    unit.set_poise(*start_poise)
+    if missing_hp >= 0.5:
+        unit.skill_3.set_conds([True])
+    unit.skill_2.set_conds([True])
+
+    if (passive_active or bl_meur):
+        unit.apply_unique_effect('passive', backend.skc.DynamicBonus(0.2 if missing_hp >= 0.75 else 0), True)
+    if bl_meur:
+        unit.apply_unique_effect('homeland', backend.skc.SwordplayOfTheHomeland(), True)
+    for i in range(6):
+        if bl_meur: unit.add_poise(bl_meur, bl_meur)
+        unit.on_turn_start()
+        dashboard = [bag[0], bag[1]]
+        a = max(dashboard)
+        b = min(dashboard)
+        decision = a
+       
+        
+        result = skills[decision].calculate_damage(unit, enemy, debug=debug)
+        total += result
+        
+        if debug: print(result)
+        sequence[i] = str(decision)
+        bag.remove(decision)
+
+        
+        
+        if len(bag) < 2:
+            bag += get_bag()
+        
+        unit.consume_poise(1)
+        unit.on_turn_end()
+    
+    if debug: print("-".join(sequence))
+    return total

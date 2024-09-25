@@ -3127,6 +3127,10 @@ class StatusNames:
     slash_fragile = "Slash Fragility"
     blunt_fragile = "Blunt Fragility"
     pierce_fragile = "Pierce Fragility"
+
+    slash_dmg_up = "Slash Damage Up"
+    blunt_dmg_up = "Blunt Damage Up"
+    pierce_dmg_up = "Pierce Damage Up"
     
     wrath_fragile = "Wrath Fragility"
     lust_fragile = "Lust Fragility"
@@ -3209,7 +3213,12 @@ class StatusEffect:
                 new_effect._has_potency = False
                 new_effect._max_count = 10
                 new_effect.on_skill_start = SpecialStatusEffects.apply_typed_fragile
-                new_effect.on_turn_end = SpecialStatusEffects.consume_all   
+                new_effect.on_turn_end = SpecialStatusEffects.consume_all
+            case (StatusNames.slash_dmg_up|StatusNames.blunt_dmg_up|StatusNames.pierce_dmg_up):
+                new_effect._has_potency = False
+                new_effect._max_count = 10
+                new_effect.on_skill_start = SpecialStatusEffects.apply_typed_damage_up
+                new_effect.on_turn_end = SpecialStatusEffects.consume_all
             case "Nails":
                 new_effect._has_potency = False
                 new_effect.on_turn_end = SpecialStatusEffects.drain_half_count
@@ -3419,6 +3428,16 @@ class SpecialStatusEffects:
     @staticmethod
     def apply_typed_fragile(self : 'StatusEffect', env : Environment, is_defending : bool = True):
         if not is_defending: return
+        physical_type : str = env.skill.type[0]
+        sin_type : str = env.skill.type[1]
+        frag_type : str = self.type.split()[0]
+        if not (frag_type == physical_type or frag_type == sin_type): return
+        new_effect = skc.Fragile(self.count, self)
+        env.apply_queue.append(new_effect)
+    
+    @staticmethod
+    def apply_typed_damage_up(self : 'StatusEffect', env : Environment, is_defending : bool = True):
+        if is_defending: return
         physical_type : str = env.skill.type[0]
         sin_type : str = env.skill.type[1]
         frag_type : str = self.type.split()[0]
@@ -4075,7 +4094,13 @@ skc.OnHit(skc.AddXForEachY(-15, 'unit.sp', 45, 'unit.sp', -15, 0))]],
 [[], [SkillEffect('unit.atk_weight', 'add', 1), skc.ReuseCoinConditional(2, SkillConditionals.RoseRodyaReuse)]], 
 [skc.ResetAttackWeight(-2), skc.DAddXForEachY(1, 'coin_power', 10, 'enemy.tremor_count')]),
 "Let's Rack Up Some Scores" : Skill((5, 4, 3), 3, "Let's Rack Up Some Scores", ("Blunt", "Envy"), [[] for _ in range(3)], 
-                                    [skc.GainCharge(6), skc.ResetAttackWeight(2)])
+[skc.GainCharge(6), skc.ResetAttackWeight(2)]),
+
+"Draw of the Sword(Outis)" : Skill((4, 6, 1), 1, "Draw of the Sword(Outis)", ("Slash", "Wrath"), 
+[[skc.OnHit(skc.GainPoise(4))]], [skc.DAddXForEachY(1, 'coin_power', 5, 'unit.poise_potency')]),
+"Acupuncture(Outis)" : Skill((5, 4, 2), 1, "Acupuncture(Outis)", ("Pierce", "Lust"), [[], [skc.OnHeadsHit(skc.GainStatusNextTurn(StatusNames.slash_dmg_up, 0, 2))]],
+[skc.GainPoiseCount(2, 0)]),
+"Decisive Dive" : Skill((6, 4, 2), 1, "Decisive Dive", ("Slash", "Pride"), [[], []], [skc.BasePowerUp(2, 0)])
 }
 ENEMIES = {
     "Test" : Enemy(40, 100, {}, {}),
@@ -4186,4 +4211,5 @@ UNITS = {
     "Yuro Ryo" : Unit("Yuro Ryo", (gs("Got a Screw Loose?"), gs("Compression Wind-up Spanner"), gs("Percussive Maintenance"))),
     "LCR Faust" : Unit("LCR Faust", (gs("Sole Strike"), gs("Deep Cuts"), gs("Opportunistic Slash"))),
     "Rose Rodya" : Unit("Rose Rodya", (gs("Rev Up"), gs("Vibration Compression"), gs("Let's Rack Up Some Scores"))),
+    "Bl Outis" : Unit("Bl Outis", (gs("Draw of the Sword(Outis)"), gs("Acupuncture(Outis)"), gs("Decisive Dive")))
     }
