@@ -2985,3 +2985,48 @@ def yuro_ryo_rotation(unit : Unit, enemy : Enemy, debug : bool = False, unit_tre
     
     if debug: print("-".join(sequence))
     return total
+
+def rose_rodya_rotation(unit : Unit, enemy : Enemy, debug : bool = False, start_charge : int = 0, enemy_tremor_count : int = 0, passive_active : bool = True):
+    sequence = [None for _ in range(6)]
+    bag = get_bag()
+
+    skills = {1 : unit.skill_1, 2 : unit.skill_2, 3 : unit.skill_3}
+    total = 0
+
+    unit.charge = start_charge
+    unit.atk_weight = 0
+    enemy.tremor_count = enemy_tremor_count
+    effects : list[backend.SkillEffect] = []
+    for i in range(6):
+        dashboard = [bag[0], bag[1]]
+        a = max(dashboard)
+        b = min(dashboard)
+        decision = a
+        if decision == 2 and unit.charge < 3:
+            decision = b
+       
+        
+        result = skills[decision].calculate_damage(unit, enemy, debug=debug, entry_effects=effects)
+        total += result
+        effects.clear()
+        
+        if debug: print(f'{result} (After attack : {unit.charge} charge)')
+        sequence[i] = str(decision)
+        bag.remove(decision)
+
+        bursts : int = unit.atk_weight
+        if (bursts > 0) and passive_active:
+            effects.append(backend.skc.TypedDamageUp('Blunt', bursts))
+            unit.charge -= 3 * bursts
+            if unit.charge < 0: unit.charge = 0
+
+        
+        
+        if len(bag) < 2:
+            bag += get_bag()
+        
+        if unit.charge > 0: unit.charge -= 1
+
+    
+    if debug: print("-".join(sequence))
+    return total

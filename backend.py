@@ -2584,8 +2584,8 @@ class SpecialSkillEffects:
             env.effects[self] = [0, -1]
     
     def ResetAttackWeight(self : SkillEffect, env : Environment):
-        env.effects[self] = [0, -1]
-        env.unit.atk_weight = 1
+        env.effects[self] = [self.value, -1]
+        env.unit.atk_weight = self.value
 
     def RegretBurst(self : SkillEffect, env : Environment):
         enemy_tremor : int = getattr(env.enemy, 'tremor', 0)
@@ -3086,6 +3086,12 @@ class SkillConditionals:
     @staticmethod
     def HasEgoHeadsHit(self : SkillEffect, env : Environment) -> bool:
         if getattr(env.unit, 'ego', False) and env.sequence[env.current_coin_index] == "Heads":
+            return True
+        return False
+    
+    @staticmethod
+    def RoseRodyaReuse(self : SkillEffect, env : Environment) -> bool:
+        if getattr(env.unit, 'charge', 0) >= 3 and env.sequence[env.current_coin_index] == "Heads":
             return True
         return False
 
@@ -4063,6 +4069,13 @@ skc.OnHit(skc.AddXForEachY(-15, 'unit.sp', 45, 'unit.sp', -15, 0))]],
 "Sole Strike" : Skill((3, 8, 1), 3, "Sole Strike", ("Slash", "Lust"), [[]], [skc.GainPoiseCount(2)]),
 "Deep Cuts" : Skill((5, 3, 3), 3, "Deep Cuts", ("Pierce", "Gloom"), [[skc.OnHit(skc.GainPoiseNextTurn(1))] for _ in range(3)]),
 "Opportunistic Slash" : Skill((4, 8, 2), 3, "Opportunistic Slash", ("Slash", "Envy"), [[], []], [skc.CoinPower(3, 0)]),
+
+"Rev Up" : Skill((4, 3, 2), 3, "Rev Up", ("Blunt", "Pride"), [[skc.OnHit(skc.GainCharge(4))], []], [skc.GainCharge(2), skc.ResetAttackWeight(0)]),
+"Vibration Compression" : Skill((6, 3, 2), 3, "Vibration Compression", ("Pierce", "Gloom"), 
+[[], [SkillEffect('unit.atk_weight', 'add', 1), skc.ReuseCoinConditional(2, SkillConditionals.RoseRodyaReuse)]], 
+[skc.ResetAttackWeight(-2), skc.DAddXForEachY(1, 'coin_power', 10, 'enemy.tremor_count')]),
+"Let's Rack Up Some Scores" : Skill((5, 4, 3), 3, "Let's Rack Up Some Scores", ("Blunt", "Envy"), [[] for _ in range(3)], 
+                                    [skc.GainCharge(6), skc.ResetAttackWeight(2)])
 }
 ENEMIES = {
     "Test" : Enemy(40, 100, {}, {}),
@@ -4172,4 +4185,5 @@ UNITS = {
     "Red Ryo" : Unit("Red Ryo", (gs("Both of You, Shut Up"), gs("S.H. / S.F."), gs("Skullbuster"), gs("Serious Skullbuster"))),
     "Yuro Ryo" : Unit("Yuro Ryo", (gs("Got a Screw Loose?"), gs("Compression Wind-up Spanner"), gs("Percussive Maintenance"))),
     "LCR Faust" : Unit("LCR Faust", (gs("Sole Strike"), gs("Deep Cuts"), gs("Opportunistic Slash"))),
+    "Rose Rodya" : Unit("Rose Rodya", (gs("Rev Up"), gs("Vibration Compression"), gs("Let's Rack Up Some Scores"))),
     }
