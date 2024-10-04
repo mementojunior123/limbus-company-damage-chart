@@ -3073,3 +3073,44 @@ def bl_outis_rotation(unit : Unit, enemy : Enemy, debug : bool = False, start_po
     
     if debug: print("-".join(sequence))
     return total
+
+def devyat_rodya_rotation(unit : Unit, enemy : Enemy, debug : bool = False, start_trunk : int = 0, enemy_rupture : tuple[int, int] = (0,0), 
+                          start_sp : int = 45, clash_count : int = 2):
+    sequence = [None for _ in range(6)]
+    bag = get_bag()
+
+    skills = {1 : unit.skill_1, 2 : unit.skill_2, 3 : unit.skill_3}
+    total = 0
+    unit.trunk = start_trunk
+    enemy.apply_status('Rupture', 0, 0)
+    unit.sp = start_sp
+    the_rupture : backend.StatusEffect = enemy.statuses.get("Rupture")
+    the_rupture.potency, the_rupture.count = enemy_rupture
+    for i in range(6):
+        unit.trunk += 3
+        dashboard = [bag[0], bag[1]]
+        a = max(dashboard)
+        b = min(dashboard)
+        decision = a
+       
+        if debug: print(f'Before attack: {unit.trunk} trunk and {the_rupture.potency}x{the_rupture.count} rupture')
+        if unit.trunk >= 30: unit.sp -= unit.trunk // 3
+        unit.sp += 10 + (clash_count - 1) * 2 if clash_count else 0
+        unit.clamp_sp()
+        result = skills[decision].calculate_damage(unit, enemy, debug=debug, entry_effects=None if unit.trunk < 20 else [backend.skc.DynamicBonus(0.1)])
+        total += result
+        
+        if debug: print(result)
+        sequence[i] = str(decision)
+        bag.remove(decision)
+
+        
+        
+        if len(bag) < 2:
+            bag += get_bag()
+        
+        if unit.trunk >= 30: unit.sp -= unit.trunk // 2
+        unit.clamp_sp()
+    
+    if debug: print("-".join(sequence))
+    return total

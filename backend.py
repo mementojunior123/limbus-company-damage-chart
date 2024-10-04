@@ -922,15 +922,15 @@ class SkillEffectConstructors:
         return effect
     
     @staticmethod
-    def DAddXForEachY(x_step : float|int, x_name : str|Callable[['SkillEffect', Environment, float|int], None], y_step : float|int, 
-                      y_name : str|Callable[['SkillEffect', Environment], float|int], min : float|int = 0, max : float|int = 1, offset : float|int = 0,
+    def DAddXForEachY(x_step : float|int, x_name : Union[str, 'SetterMethod'], y_step : float|int, 
+                      y_name : Union[str, 'GetterMethod'], min : float|int = 0, max : float|int = 1, offset : float|int = 0,
                       condition : Union[int, 'SkillConditional'] = -1):
         effect = SkillEffect(x_name, "add", x_step, condition= condition, duration=-1, 
         data = {"x_step": x_step, "x_name": x_name, "y_step": y_step, "y_name": y_name, "range": (min, max), "offset" : offset})
         
         effect.apply = SpecialSkillEffects.apply_nothing_wduration
         effect.early_update = SpecialSkillEffects.d_add_foreach_y
-        effect.late_update = SpecialSkillEffects.d_add_foreach_y_cleanup
+        effect.megalate_update = SpecialSkillEffects.d_add_foreach_y_cleanup
         return effect
     
     @staticmethod
@@ -1351,8 +1351,8 @@ class SkillEffectConstructors:
         return SkillEffect('dynamic', 'add', 0, apply_func=SpecialSkillEffects.GCorpGregorS3Bonus)
 
     @staticmethod
-    def GainCourrierTrunk(count : int):
-        return SkillEffect('dynamic', 'add', count, apply_func=SpecialSkillEffects.GainCourrierTrunk)
+    def GainCourrierTrunk(count : int, condition : Union[int, 'SkillConditional'] = -1):
+        return SkillEffect('dynamic', 'add', count, apply_func=SpecialSkillEffects.GainCourrierTrunk, condition=condition)
     
     @staticmethod
     def DevyatRodyaCoinPower():
@@ -1366,8 +1366,8 @@ class SkillEffectConstructors:
         return SkillEffect('dynamic', 'add', 0, apply_func=SpecialSkillEffects.DVRRuptureCondCheck)
     
     @staticmethod
-    def StopRuptureDrain():
-        return SkillEffect('dynamic', 'add', 0, apply_func=SpecialSkillEffects.StopRuptureDrain)
+    def StopRuptureDrain(condition : Union[int, 'SkillConditional'] = -1):
+        return SkillEffect('dynamic', 'add', 0, apply_func=SpecialSkillEffects.StopRuptureDrain, condition=condition)
 
 class SkillEffect:
     @classmethod
@@ -3187,11 +3187,13 @@ class SkillConditionals:
     def CourrierTrunkBelow15(self : SkillEffect, env : Environment, data = None):
         return (getattr(env.unit, 'trunk', 0) < 15)
 
-
+GetterMethod = Callable[[SkillEffect, Environment], float|int|Any]
+SetterMethod = Callable[[SkillEffect, Environment, float|int|Any], None]
 class GetterMethods:
     @staticmethod
     def RedRyoSum(self : SkillEffect, env : Environment):
         return env.unit.red_eyes + env.unit.penitence
+    
 
 sk = SkillEffect
 skc = SkillEffectConstructors
@@ -4207,7 +4209,19 @@ skc.OnHit(skc.AddXForEachY(-15, 'unit.sp', 45, 'unit.sp', -15, 0))]],
 "You Fresh Enough?" : Skill((6, 8, 1), 0, "You Fresh Enough?", ("Slash", "Gluttony"), [[]], [skc.CoinPower(3, 0)]),
 "Butcher Viand" : Skill((5, 1, 4), 3, "Butcher Viand", ("Slash", "Envy"), [[] for _ in range(4)], [skc.CoinPower(1, 0)]),
 
-"CT - DK" : Skill((3, 4, 2), 2, "CT - DK", ("Slash", "Lust"), [[]])
+"CT - DK" : Skill((3, 4, 2), 2, "CT - DK", ("Slash", "Lust"), [
+[skc.OnHit(skc.GainCourrierTrunk(1, SkillConditionals.CourrierTrunkBelow15)), skc.OnHit(skc.GainCourrierTrunk(1))], 
+[skc.OnHit(skc.ApplyStatus('Rupture', 3, condition=SkillConditionals.DevRodyaRuptureCondInverted))]], 
+[skc.DVRRuptureCondCheck(), skc.StopRuptureDrain(SkillConditionals.DevRodyaRuptureCond), skc.DevyatRodyaCoinPower()]),
+"CT - GR" : Skill((4, 4, 3), 2, "CT - GR", ("Slash", "Wrath"),
+[[skc.OnHit(skc.GainCourrierTrunk(2, SkillConditionals.CourrierTrunkBelow15)), skc.OnHit(skc.GainCourrierTrunk(1))], [], []],
+[skc.DVRRuptureCondCheck(), skc.StopRuptureDrain(SkillConditionals.DevRodyaRuptureCond), 
+skc.DAddXForEachY(0.02, 'dynamic', 1, 'unit.trunk', 0, 0.4), skc.DevyatRodyaCoinPower()]),
+"I Trust Ya, Polu!" : Skill((5, 4, 3), 4, "I Trust Ya, Polu!", ("Slash", "Gluttony"), 
+[[], [skc.OnHit(skc.ApplyStatusCount('Rupture', 3, condition=SkillConditionals.DevRodyaRuptureCondInverted)), 
+skc.OnHit(skc.AddStatusCountForEachY(1, 'Rupture', 10, 'unit.trunk', 0, 2, condition=SkillConditionals.DevRodyaRuptureCondInverted))],
+[skc.ReuseCoin(1, SkillConditionals.DevRodyaRuptureCond), skc.AddXForEachY(0.25, 'dynamic', 15, 'unit.trunk', 0, 0.25)]],
+[skc.DVRRuptureCondCheck(), skc.DevyatRodyaCoinPower(), skc.DAddXForEachY(0.04, 'dynamic', 1, 'unit.trunk', 0, 0.8)])
 }
 ENEMIES = {
     "Test" : Enemy(40, 100, {}, {}),
@@ -4320,5 +4334,6 @@ UNITS = {
     "Rose Rodya" : Unit("Rose Rodya", (gs("Rev Up"), gs("Vibration Compression"), gs("Let's Rack Up Some Scores"))),
     "Bl Outis" : Unit("Bl Outis", (gs("Draw of the Sword(Outis)"), gs("Acupuncture(Outis)"), gs("Decisive Dive"))),
     "G Gregor" : Unit("G Gregor", (gs("Hack"), gs("Dismember"), gs("Eviscerate"))),
-    "Chef Gregor" : Unit("Chef Gregor", (gs("Keep It Fresh"), gs("You Fresh Enough?"), gs("Butcher Viand")))
+    "Chef Gregor" : Unit("Chef Gregor", (gs("Keep It Fresh"), gs("You Fresh Enough?"), gs("Butcher Viand"))),
+    "Devyat Rodya" : Unit("Devyat Rodya", (gs("CT - DK"), gs("CT - GR"), gs("I Trust Ya, Polu!")))
     }
