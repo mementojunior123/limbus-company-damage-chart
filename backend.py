@@ -760,161 +760,161 @@ class SkillEffectConstructors:
         return sk.new("TypedDamageUp", (type, value))
     
     @staticmethod
-    def DynamicBonus(value : float, condition : Union[int, 'SkillConditional'] = -1, duration : int = -1):
+    def DynamicBonus(value : float, condition : 'AnySkillConditional' = -1, duration : int = -1):
         return sk.new("DynamicBonus", value, condition, duration)
     
     @staticmethod
-    def BasePowerUp(value : int, condition : Union[int, 'SkillConditional'] = -1, duration : int = -1):
+    def BasePowerUp(value : int, condition : 'AnySkillConditional' = -1, duration : int = -1):
         return sk.new("BasePower", value, condition=condition, the_duration=duration)
     
     @staticmethod
-    def CoinPower(value : int, condition : Union[int, 'SkillConditional'] = -1, duration : int = -1):
+    def CoinPower(value : int, condition : 'AnySkillConditional' = -1, duration : int = -1):
         return sk.new("CoinPower", value, condition=condition, the_duration=duration)
     
     @staticmethod
-    def OffenseLevelUp(value : int, condition : Union[int, 'SkillConditional'] = -1, duration : int = -1):
+    def OffenseLevelUp(value : int, condition : 'AnySkillConditional' = -1, duration : int = -1):
         return sk.new("OffenseLevelUp", value, condition=condition, the_duration=duration)
     
     @staticmethod
-    def DefenseLevelDown(value : int, condition : Union[int, 'SkillConditional'] = -1, duration : int = -1):
+    def DefenseLevelDown(value : int, condition : 'AnySkillConditional' = -1, duration : int = -1):
         return sk.new("DefenseLevelDown", value, condition=condition, the_duration=duration)
     
     @staticmethod
-    def ApplyFanatic(value : int, condition : Union[int, 'SkillConditional'] = -1):
+    def ApplyFanatic(value : int, condition : 'AnySkillConditional' = -1):
         return sk.new("ApplyFanatic", value, condition)
     
     @staticmethod
-    def ApplyBM(value : int, condition : Union[int, 'SkillConditional'] = -1):
+    def ApplyBM(value : int, condition : 'AnySkillConditional' = -1):
         return SkillEffectConstructors.ApplyStatus('BM', 0, value, condition)
     
     @staticmethod
-    def ApplyStatus(status_type : str, potency : int, count : int = 0, condition : Union[int, 'SkillConditional'] = -1):
+    def ApplyStatus(status_type : str, potency : int, count : int = 0, condition : 'AnySkillConditional' = -1):
         return sk.new("ApplyStatus", (status_type, potency, count), condition=condition)
     
     @staticmethod
-    def ApplyAdditionalStatus(status_type : str, potency : int, count : int, condition : Union[int, 'SkillConditional'] = -1):
+    def ApplyAdditionalStatus(status_type : str, potency : int, count : int, condition : 'AnySkillConditional' = -1):
         effect = SkillEffect(status_type, 'add', (potency, count), condition=condition, apply_func=SpecialSkillEffects.apply_nothing_wduration)
         effect.on_status_applied = SpecialSkillEffects.apply_additional_status
         return effect
 
     @staticmethod
-    def ApplyStatusPot(status_type : str, potency : int, condition : Union[int, 'SkillConditional'] = -1):
+    def ApplyStatusPot(status_type : str, potency : int, condition : 'AnySkillConditional' = -1):
         return SkillEffectConstructors.ApplyStatus(status_type, potency, 0, condition)
 
     @staticmethod
-    def ApplyStatusCount(status_type : str, count : int, condition : Union[int, 'SkillConditional'] = -1):
+    def ApplyStatusCount(status_type : str, count : int, condition : 'AnySkillConditional' = -1):
         return SkillEffectConstructors.ApplyStatus(status_type, 0, count, condition)
 
     @staticmethod
-    def ApplyStatusNextTurn(status_type : str, potency : int, count : int, condition : Union[int, 'SkillConditional'] = -1):
+    def ApplyStatusNextTurn(status_type : str, potency : int, count : int, condition : 'AnySkillConditional' = -1):
         return sk.new("ApplyStatusNextTurn", (status_type, potency, count), condition=condition)
     
     @staticmethod
-    def ApplyStatusPotNextTurn(status_type : str, potency : int, condition : Union[int, 'SkillConditional'] = -1):
+    def ApplyStatusPotNextTurn(status_type : str, potency : int, condition : 'AnySkillConditional' = -1):
         return SkillEffectConstructors.ApplyStatusNextTurn(status_type, potency, 0, condition)
     
     @staticmethod
-    def ApplyStatusCountNextTurn(status_type : str, count : int, condition : Union[int, 'SkillConditional'] = -1):
+    def ApplyStatusCountNextTurn(status_type : str, count : int, condition : 'AnySkillConditional' = -1):
         return SkillEffectConstructors.ApplyStatusNextTurn(status_type, 0, count, condition)
 
     @staticmethod
-    def GainStatus(status_type : str, potency : int, count : int, condition : Union[int, 'SkillConditional'] = -1):
+    def GainStatus(status_type : str, potency : int, count : int, condition : 'AnySkillConditional' = -1):
         return sk.new("GainStatus", (status_type, potency, count), condition=condition)
 
     @staticmethod
-    def GainStatusNextTurn(status_type : str, potency : int, count : int, condition : Union[int, 'SkillConditional'] = -1):
+    def GainStatusNextTurn(status_type : str, potency : int, count : int, condition : 'AnySkillConditional' = -1):
         return sk.new("GainStatusNextTurn", (status_type, potency, count), condition=condition)
     
     @staticmethod
-    def GainPoise(potency : int, count : int = 0, condition : Union[int, 'SkillConditional'] = -1):
+    def GainPoise(potency : int, count : int = 0, condition : 'AnySkillConditional' = -1):
         effect = SkillEffect("dynamic", 'add', 0, condition=condition, data=[potency, count])
         effect.apply = SpecialSkillEffects.gain_poise
         return effect
     
     @staticmethod
-    def GainPoiseNextTurn(potency : int, count : int = 0, condition : Union[int, 'SkillConditional'] = -1):
+    def GainPoiseNextTurn(potency : int, count : int = 0, condition : 'AnySkillConditional' = -1):
         effect = SkillEffect("dynamic", 'add', 0, condition=condition, data=[potency, count])
         effect.apply = SpecialSkillEffects.gain_poise_next_turn
         return effect
     
     @staticmethod
-    def GainPoiseCount(count : int, condition : Union[int, 'SkillConditional'] = -1):
+    def GainPoiseCount(count : int, condition : 'AnySkillConditional' = -1):
         return SkillEffectConstructors.GainPoise(0, count, condition)
     
     @staticmethod
-    def GainPoiseCountNextTurn(count : int, condition : Union[int, 'SkillConditional'] = -1):
+    def GainPoiseCountNextTurn(count : int, condition : 'AnySkillConditional' = -1):
         return SkillEffectConstructors.GainPoiseNextTurn(0, count, condition)
     
     @staticmethod
-    def GainAdditionalPoise(potency : int, count : int, condition : Union[int, 'SkillConditional'] = -1):
+    def GainAdditionalPoise(potency : int, count : int, condition : 'AnySkillConditional' = -1):
         return sk.new("GainAdditionalPoise", (potency, count), condition=condition)
     
     @staticmethod
-    def GainCharge(count : int, condition : Union[int, 'SkillConditional'] = -1):
+    def GainCharge(count : int, condition : 'AnySkillConditional' = -1):
         return sk.new("GainCharge", count, condition=condition)
 
     @staticmethod
-    def ConsumeCharge(count : int, condition : Union[int, 'SkillConditional'] = -1):
+    def ConsumeCharge(count : int, condition : 'AnySkillConditional' = -1):
         return sk.new("ConsumeCharge", count, condition=condition)
     
     @staticmethod
-    def GainTremor(count : int, condition : Union[int, 'SkillConditional'] = -1):
+    def GainTremor(count : int, condition : 'AnySkillConditional' = -1):
         return SkillEffect('unit.tremor', 'add', count, condition=condition)
     
     @staticmethod
-    def InflictTremor(potency : int, condition : Union[int, 'SkillConditional'] = -1):
+    def InflictTremor(potency : int, condition : 'AnySkillConditional' = -1):
         return SkillEffect('enemy.tremor', 'add', potency, condition=condition)
 
     @staticmethod
-    def InflictTremorCount(count : int, condition : Union[int, 'SkillConditional'] = -1):
+    def InflictTremorCount(count : int, condition : 'AnySkillConditional' = -1):
         return SkillEffect('enemy.tremor_count', 'add', count, condition=condition)
     
     @staticmethod
-    def ConsumeChargeTrigger(count : int, effect : 'SkillEffect', condition : Union[int, 'SkillConditional'] = -1):
+    def ConsumeChargeTrigger(count : int, effect : 'SkillEffect', condition : 'AnySkillConditional' = -1):
         return sk.new("ConsumeChargeTrigger", (count, effect), condition=condition)
 
     @staticmethod
-    def ConsumeRessourceTrigger(name : str, count : int|float, treshold : int, effect : 'SkillEffect', condition : Union[int, 'SkillConditional'] = -1):
+    def ConsumeRessourceTrigger(name : str, count : int|float, treshold : int, effect : 'SkillEffect', condition : 'AnySkillConditional' = -1):
         return sk.new("ConsumeRessourceTrigger", (name, count, treshold, effect), condition=condition)
 
     @staticmethod
-    def OnHit(effect : 'SkillEffect', condition : Union[int, 'SkillConditional'] = -1):
+    def OnHit(effect : 'SkillEffect', condition : 'AnySkillConditional' = -1):
         return sk.new("OnHit", effect, condition=condition)
     
     @staticmethod
-    def OnHeadsHit(effect : 'SkillEffect', condition : Union[int, 'SkillConditional'] = -1):
+    def OnHeadsHit(effect : 'SkillEffect', condition : 'AnySkillConditional' = -1):
         return sk.new("OnHeadsHit", effect, condition=condition)
     
     @staticmethod
-    def OnCrit(effect : 'SkillEffect', condition : Union[int, 'SkillConditional'] = -1, duration : int = 1):
+    def OnCrit(effect : 'SkillEffect', condition : 'AnySkillConditional' = -1, duration : int = 1):
         return sk.new("OnCrit", effect, condition=condition, the_duration=duration)
     
     @staticmethod
-    def OnCritRoll(effect : 'SkillEffect', condition : Union[int, 'SkillConditional'] = -1):
+    def OnCritRoll(effect : 'SkillEffect', condition : 'AnySkillConditional' = -1):
         return sk.new("OnCritRoll", effect, condition=condition)
     
     @staticmethod
-    def AfterAttack(effect_to_trigger : 'SkillEffect', condition : Union[int, 'SkillConditional'] = -1):
+    def AfterAttack(effect_to_trigger : 'SkillEffect', condition : 'AnySkillConditional' = -1):
         effect = SkillEffect("dynamic", "add", 0, condition= condition, duration=1)
         effect.on_skill_end = SpecialSkillEffects.on_hit_trigger
         effect.special_data = effect_to_trigger
         return effect
     
     @staticmethod
-    def HealSP(value : int, duration : int = -1, condition : Union[int, 'SkillConditional'] = -1):
+    def HealSP(value : int, duration : int = -1, condition : 'AnySkillConditional' = -1):
         effect = SkillEffect('unit.sp', 'add', value, duration, condition)
         effect.apply = SpecialSkillEffects.heal_sp
         return effect
     
     @staticmethod
-    def LoseSP(value : int, duration : int = -1, condition : Union[int, 'SkillConditional'] = -1):
+    def LoseSP(value : int, duration : int = -1, condition : 'AnySkillConditional' = -1):
         effect = SkillEffect('unit.sp', 'add', value, duration, condition)
         effect.apply = SpecialSkillEffects.lose_sp
         return effect
     
     @staticmethod
     def AddXForEachY(x_step : float|int, x_name : str, y_step : float|int, y_name : str, min : float|int = 0, max : float|int = 1, offset : float|int = 0,
-                     condition : Union[int, 'SkillConditional'] = -1, duration : int = -1):
+                     condition : 'AnySkillConditional' = -1, duration : int = -1):
         effect = SkillEffect(x_name, "add", x_step, condition= condition, duration=duration, 
         data = {"x_step": x_step, "x_name": x_name, "y_step": y_step, "y_name": y_name, "range": (min, max), "offset" : offset})
         
@@ -924,7 +924,7 @@ class SkillEffectConstructors:
     @staticmethod
     def DAddXForEachY(x_step : float|int, x_name : Union[str, 'SetterMethod'], y_step : float|int, 
                       y_name : Union[str, 'GetterMethod'], min : float|int = 0, max : float|int = 1, offset : float|int = 0,
-                      condition : Union[int, 'SkillConditional'] = -1):
+                      condition : 'AnySkillConditional' = -1):
         effect = SkillEffect(x_name, "add", x_step, condition= condition, duration=-1, 
         data = {"x_step": x_step, "x_name": x_name, "y_step": y_step, "y_name": y_name, "range": (min, max), "offset" : offset})
         
@@ -935,7 +935,7 @@ class SkillEffectConstructors:
     
     @staticmethod
     def AddStatusPotForEachY(value : int, status_name : str, y_step : float|int, y_name : str, min : int = 0, max : int = 1, offset : int = 0,
-                            condition : Union[int, 'SkillConditional'] = -1, duration : int = -1, next_turn : bool = False):
+                            condition : 'AnySkillConditional' = -1, duration : int = -1, next_turn : bool = False):
         
         effect = SkillEffect(status_name, "add", value, condition= condition, duration=duration, 
         data = {"x_step": value, "status_name": status_name, "y_step": y_step, "y_name": y_name, "range": (min, max), "offset" : offset, 'next_turn' : next_turn})
@@ -944,7 +944,7 @@ class SkillEffectConstructors:
     
     @staticmethod
     def AddStatusCountForEachY(value : int, status_name : str, y_step : float|int, y_name : str, min : int = 0, max : int = 1, offset : int = 0,
-                            condition : Union[int, 'SkillConditional'] = -1, duration : int = -1, next_turn : bool = False):
+                            condition : 'AnySkillConditional' = -1, duration : int = -1, next_turn : bool = False):
         
         effect = SkillEffect(status_name, "add", value, condition= condition, duration=duration, 
         data = {"x_step": value, "status_name": status_name, "y_step": y_step, "y_name": y_name, "range": (min, max), "offset" : offset, 'next_turn' : next_turn})
@@ -952,7 +952,7 @@ class SkillEffectConstructors:
         return effect
 
     @staticmethod
-    def ReuseCoin(reuse_count : int, condition : Union[int, 'SkillConditional'] = -1):
+    def ReuseCoin(reuse_count : int, condition : 'AnySkillConditional' = -1):
         effect = SkillEffect('dynamic', 'add', reuse_count, condition=condition, 
         apply_func=SpecialSkillEffects.apply_reuse, remove_func=SpecialSkillEffects.remove_nothing)
         effect.special_data = 0
@@ -961,7 +961,7 @@ class SkillEffectConstructors:
         return effect
     
     @staticmethod
-    def ReuseCoinConditional(reuse_count : int, eval_func : Callable[['SkillEffect', Environment], bool], condition : Union[int, 'SkillConditional'] = -1):
+    def ReuseCoinConditional(reuse_count : int, eval_func : Callable[['SkillEffect', Environment], bool], condition : 'AnySkillConditional' = -1):
         effect = SkillEffect('dynamic', 'add', (reuse_count, eval_func), condition=condition, 
         apply_func=SpecialSkillEffects.apply_reuse, remove_func=SpecialSkillEffects.remove_nothing)
         effect.special_data = 0
@@ -970,7 +970,7 @@ class SkillEffectConstructors:
         return effect
 
     @staticmethod
-    def PeqSangReuseCoin(reuse_count : int, condition : Union[int, 'SkillConditional'] = -1):
+    def PeqSangReuseCoin(reuse_count : int, condition : 'AnySkillConditional' = -1):
         effect = SkillEffect('dynamic', 'add', reuse_count, condition=condition, 
         apply_func=SpecialSkillEffects.apply_reuse, remove_func=SpecialSkillEffects.remove_nothing)
         effect.special_data = 0
@@ -1000,7 +1000,7 @@ class SkillEffectConstructors:
         return sk.new("MCFaustS3ChargeGain", None)
     
     @staticmethod
-    def MCFaustS2DamageBonus(condition : Union[int, 'SkillConditional'] = -1):
+    def MCFaustS2DamageBonus(condition : 'AnySkillConditional' = -1):
         return sk.new("MCFaustS2DamageBonus", None, condition=condition)
     
     @staticmethod
@@ -1012,11 +1012,11 @@ class SkillEffectConstructors:
         return sk.new("MCFaustPassive", low_hp_enemy)
 
     @staticmethod
-    def Photoelectricity(value : int, condition : Union[int, 'SkillConditional'] = -1):
+    def Photoelectricity(value : int, condition : 'AnySkillConditional' = -1):
         return sk.new("Photoelectricity", value, condition=condition)
     
     @staticmethod
-    def ButlerOutisS3Bonus(condition : Union[int, 'SkillConditional'] = -1):
+    def ButlerOutisS3Bonus(condition : 'AnySkillConditional' = -1):
         return sk.new('ButlerOutisS3Bonus', None, condition=condition)
 
     @staticmethod
@@ -1052,7 +1052,7 @@ class SkillEffectConstructors:
         return sk.new("CounterBasepowerGain", None)
     
     @staticmethod
-    def ResetAttackWeight(count : int = 1, condition : Union[int, 'SkillConditional'] = -1):
+    def ResetAttackWeight(count : int = 1, condition : 'AnySkillConditional' = -1):
         return sk.new("ResetAttackWeight", count, condition=condition)
     
     @staticmethod
@@ -1162,7 +1162,7 @@ class SkillEffectConstructors:
         return effect
     
     @staticmethod
-    def BlFaustS3Conversion(condition : Union[int, 'SkillConditional'] = -1):
+    def BlFaustS3Conversion(condition : 'AnySkillConditional' = -1):
         effect = SkillEffect('unit.poise_potency', 'add', 0, condition=condition)
         effect.apply = SpecialSkillEffects.BlFaustS3Conversion
         return effect
@@ -1351,7 +1351,7 @@ class SkillEffectConstructors:
         return SkillEffect('dynamic', 'add', 0, apply_func=SpecialSkillEffects.GCorpGregorS3Bonus)
 
     @staticmethod
-    def GainCourrierTrunk(count : int, condition : Union[int, 'SkillConditional'] = -1):
+    def GainCourrierTrunk(count : int, condition : 'AnySkillConditional' = -1):
         return SkillEffect('dynamic', 'add', count, apply_func=SpecialSkillEffects.GainCourrierTrunk, condition=condition)
     
     @staticmethod
@@ -1366,12 +1366,30 @@ class SkillEffectConstructors:
         return SkillEffect('dynamic', 'add', 0, apply_func=SpecialSkillEffects.DVRRuptureCondCheck)
     
     @staticmethod
-    def StopRuptureDrain(condition : Union[int, 'SkillConditional'] = -1):
+    def StopRuptureDrain(condition : 'AnySkillConditional' = -1):
         return SkillEffect('dynamic', 'add', 0, apply_func=SpecialSkillEffects.StopRuptureDrain, condition=condition)
+
+    @staticmethod
+    def GainErudition(count : int, condition : 'AnySkillConditional' = -1):
+        return SkillEffect('dynamic', 'add', count, apply_func=SpecialSkillEffects.GainErudition, condition=condition)
+    
+    @staticmethod
+    def DeiciMeurS3Insight():
+        return SkillEffect('dynamic', 'add', 0, apply_func=SpecialSkillEffects.DeiciMeurS3Insight)
+    
+    @staticmethod
+    def DeiciMeurS3Sinking():
+        return SkillEffect('dynamic', 'add', 0, apply_func=SpecialSkillEffects.DeiciMeurS3Sinking)
+    
+    @staticmethod
+    def DeiciMeurResetInsight():
+        effect = SkillEffect('dynamic', 'add', 0, apply_func=SpecialSkillEffects.apply_nothing_wduration)
+        effect.on_skill_end = SpecialSkillEffects.DeiciMeurResetInsight
+        return effect
 
 class SkillEffect:
     @classmethod
-    def new(cls, effect_type : str, values, condition : Union[int, 'SkillConditional'] = -1, the_duration : int = -1):
+    def new(cls, effect_type : str, values, condition : 'AnySkillConditional' = -1, the_duration : int = -1):
         if type(values) != tuple and type(values) != list:
             values = [values]
         
@@ -1725,7 +1743,7 @@ class SkillEffect:
         return SkillEffect(self.name, self.operation, self.value, self.duration, self.condition,
                            self.apply, self.remove, self.special_data)    
 
-    def __init__(self, name : str, operation : str, value : float, duration : int = -1, condition : Union[int, 'SkillConditional'] = -1, 
+    def __init__(self, name : str, operation : str, value : float, duration : int = -1, condition : 'AnySkillConditional' = -1, 
                  apply_func : Callable|None = None, remove_func : Callable|None = None, data : Any = None) -> None:
         self.name = name
         self.operation = operation
@@ -3147,14 +3165,40 @@ class SpecialSkillEffects:
         env.global_state['DevyatRuptureCond'] = state
         env.effects[self] = [state, -1]
         
-    
     def StopRuptureDrain(self : SkillEffect, env : Environment):
         env.CONSUME_RUPTURE = False
         env.effects[self] = [0, -1]
 
+    def GainErudition(self : SkillEffect, env : Environment):
+        env.unit.erudition += self.value
+        if env.unit.erudition > 6: env.unit.erudition = 6
+        env.effects[self] = [self.value, -1]
+    
+    def DeiciMeurS3Insight(self : SkillEffect, env : Environment):
+        env.unit.insight += env.unit.erudition
+        env.unit.erudition = 0
+        env.effects[self] = [self.value, -1]
+    
+    def DeiciMeurS3Sinking(self : SkillEffect, env : Environment):
+        potency : int = 0
+        count : int = 0
+        for _ in range(env.unit.insight):
+            if randint(1, 2) == 1: potency += 1
+            else: count += 1
+        env.enemy.apply_status('Sinking', potency, count)
+        env.effects[self] = [0, -1]
+    
+    def DeiciMeurResetInsight(self : SkillEffect, env : Environment):
+        if env.unit.insight >= 4:
+            if getattr(env.unit, 'did_kill', False):
+                env.unit.insight = 3
+            else:
+                env.unit.insight = 1
+        env.effects[self] = [0, -1]
 
 
 SkillConditional = Callable[[SkillEffect, Environment], bool]
+AnySkillConditional = Union[int, SkillConditional]
 class SkillConditionals:
     def __init__(self, method : Callable[[SkillEffect, Environment, dict|None], bool], data : dict) -> None:
         self.eval_func : Callable[[SkillEffect, Environment, dict|None], bool] = method
@@ -4221,7 +4265,24 @@ skc.DAddXForEachY(0.02, 'dynamic', 1, 'unit.trunk', 0, 0.4), skc.DevyatRodyaCoin
 [[], [skc.OnHit(skc.ApplyStatusCount('Rupture', 3, condition=SkillConditionals.DevRodyaRuptureCondInverted)), 
 skc.OnHit(skc.AddStatusCountForEachY(1, 'Rupture', 10, 'unit.trunk', 0, 2, condition=SkillConditionals.DevRodyaRuptureCondInverted))],
 [skc.ReuseCoin(1, SkillConditionals.DevRodyaRuptureCond), skc.AddXForEachY(0.25, 'dynamic', 15, 'unit.trunk', 0, 0.25)]],
-[skc.DVRRuptureCondCheck(), skc.DevyatRodyaCoinPower(), skc.DAddXForEachY(0.04, 'dynamic', 1, 'unit.trunk', 0, 0.8)])
+[skc.DVRRuptureCondCheck(), skc.DevyatRodyaCoinPower(), skc.DAddXForEachY(0.04, 'dynamic', 1, 'unit.trunk', 0, 0.8)]),
+
+"Studious Dedication" : Skill((3, 4, 2), 0, "Studious Dedication", ("Blunt", "Gluttony"), [[], [skc.OnHit(skc.ApplyStatusCount('Sinking', 2))]], 
+[skc.GainErudition(2, 0)]),
+"Moment of Erudition" : Skill((4, 6, 2), 1, "Moment of Erudition", ("Pierce", "Sloth"), 
+[[], [skc.OnHit(skc.AddStatusPotForEachY(2, 'Sinking', 1, 'unit.insight', 2, 6))]],
+[skc.DAddXForEachY(1, 'coin_power', 6, 'enemy.statuses.Sinking.potency', 0, 2), skc.DAddXForEachY(0.05, 'dynamic', 1, 'unit.insight', 0, 0.15)]),
+"Scorch Knowledge" : Skill((5, 4, 3), 3, "Scorch Knowledge", ("Blunt", "Gloom"), [[], [], [skc.OnHit(skc.DeiciMeurS3Sinking())]], 
+[skc.DAddXForEachY(1, 'coin_power', 6, 'enemy.statuses.Sinking.potency', 0, 2), skc.DAddXForEachY(0.05, 'dynamic', 1, 'unit.insight', 0, 0.45),
+skc.DeiciMeurS3Insight(), skc.DeiciMeurResetInsight()]),
+
+"Baile y Rola" : Skill((4, 2, 2), -3, "Baile y Rola", ("Blunt", "Sloth"), [[skc.OnHit(skc.ApplyStatus('Sinking', 4))], []], 
+[skc.DAddXForEachY(1, 'coin_power', 4, 'enemy.statuses.Sinking.potency')]),
+"Danza de Pasión" : Skill((5, 1, 3), -3, "Danza de Pasión", ("Blunt", "Envy"), 
+[[skc.OnHit(skc.GainPoise(2)), skc.OnHit(skc.GainPoiseCount(1))], [skc.OnHit(skc.ApplyStatus('Sinking', 2)), skc.OnHit(skc.ApplyStatusCount('Sinking', 1))],
+[skc.OnHit(skc.ApplyStatus('Sinking', 2))]], [skc.DAddXForEachY(2, 'coin_power', 6, 'enemy.statuses.Sinking.potency', 0, 2)]),
+"Pañata Party" : Skill((8, 11, 1), -3, "Pañata Party", ("Blunt", "Gloom"), [[skc.OnCritRoll(skc.DAddXForEachY(0.3, 'dynamic', 5, 'unit.poise_count', 0, 0.3))]],
+[skc.AddXForEachY(0.01, 'crit_odds_bonus', -1, 'enemy.sp', 0, 0.45)])
 }
 ENEMIES = {
     "Test" : Enemy(40, 100, {}, {}),
@@ -4335,5 +4396,7 @@ UNITS = {
     "Bl Outis" : Unit("Bl Outis", (gs("Draw of the Sword(Outis)"), gs("Acupuncture(Outis)"), gs("Decisive Dive"))),
     "G Gregor" : Unit("G Gregor", (gs("Hack"), gs("Dismember"), gs("Eviscerate"))),
     "Chef Gregor" : Unit("Chef Gregor", (gs("Keep It Fresh"), gs("You Fresh Enough?"), gs("Butcher Viand"))),
-    "Devyat Rodya" : Unit("Devyat Rodya", (gs("CT - DK"), gs("CT - GR"), gs("I Trust Ya, Polu!")))
+    "Devyat Rodya" : Unit("Devyat Rodya", (gs("CT - DK"), gs("CT - GR"), gs("I Trust Ya, Polu!"))),
+    "Deici Meur" : Unit("Deici Meur", (gs("Studious Dedication"), gs("Moment of Erudition"), gs("Scorch Knowledge"))),
+    "Mariachi Sinclair" : Unit("Mariachi Sinclair", (gs("Baile y Rola"), gs("Danza de Pasión"), gs("Pañata Party")))
     }

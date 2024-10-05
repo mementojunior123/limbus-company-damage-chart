@@ -3114,3 +3114,89 @@ def devyat_rodya_rotation(unit : Unit, enemy : Enemy, debug : bool = False, star
     
     if debug: print("-".join(sequence))
     return total
+
+def deici_meur_rotation(unit : Unit, enemy : Enemy, debug : bool = False, enemy_sinking : tuple[int, int] = (0,0), start_insight : int = 1, 
+                        start_erudition : int = 0, discarding_allies : int = 0):
+    sequence = [None for _ in range(6)]
+    bag = get_bag()
+
+    skills = {1 : unit.skill_1, 2 : unit.skill_2, 3 : unit.skill_3}
+    total = 0
+    unit.insight = start_insight
+    unit.erudition = start_erudition
+    enemy.apply_status('Sinking', 0, 0)
+    the_sinking : backend.StatusEffect = enemy.statuses['Sinking']
+    the_sinking.potency, the_sinking.count = enemy_sinking
+    effects : list[backend.SkillEffect|None] = None if not discarding_allies else [backend.skc.DynamicBonus(backend.clamp(discarding_allies * 0.1, 0, 0.3))]
+    unit.skill_1.set_conds([True])
+    for i in range(6):
+        dashboard = [bag[0], bag[1]]
+        a = max(dashboard)
+        b = min(dashboard)
+        decision = a
+        unit.erudition = backend.clamp(unit.erudition + backend.clamp(discarding_allies, 0, 3), 0, 6)
+        
+        if a == 3:
+            if b == 3: 
+                pass
+            elif b == 2:
+                pass
+            elif b == 1:
+                pass
+        elif a == 2:
+            if b == 2:
+                unit.erudition = backend.clamp(unit.erudition + unit.insight, 0, 6)
+            elif b == 1:
+                unit.erudition = backend.clamp(unit.erudition + unit.insight, 0, 6)
+                bag.remove(b)
+                unit.insight = b
+        else:
+            bag.remove(b)
+            unit.insight = b
+        result = skills[decision].calculate_damage(unit, enemy, debug=debug, entry_effects=effects)
+        total += result
+        
+        if debug: print(result)
+        sequence[i] = str(decision)
+        bag.remove(decision)
+
+        
+        
+        if len(bag) < 2:
+            bag += get_bag()
+    
+    if debug: print("-".join(sequence))
+    return total
+
+def mariachi_rotation(unit : Unit, enemy : Enemy, debug : bool = False, poise : tuple[int, int] = (0,0), sinking : tuple[int, int] = (0,0), enemy_sp : int = 0):
+    sequence = [None for _ in range(6)]
+    bag = get_bag()
+
+    skills = {1 : unit.skill_1, 2 : unit.skill_2, 3 : unit.skill_3}
+    total = 0
+    unit.set_poise(*poise)
+    enemy.apply_status('Sinking', 0, 0)
+    the_sinking : backend.StatusEffect = enemy.statuses['Sinking']
+    the_sinking.potency, the_sinking.count = sinking
+    enemy.sp = enemy_sp
+    for i in range(6):
+        dashboard = [bag[0], bag[1]]
+        a = max(dashboard)
+        b = min(dashboard)
+        decision = a
+       
+        
+        result = skills[decision].calculate_damage(unit, enemy, debug=debug)
+        total += result
+        
+        if debug: print(result)
+        sequence[i] = str(decision)
+        bag.remove(decision)
+
+        
+        
+        if len(bag) < 2:
+            bag += get_bag()
+    
+    if debug: print("-".join(sequence))
+    return total
