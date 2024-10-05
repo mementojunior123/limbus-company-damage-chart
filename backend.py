@@ -879,8 +879,18 @@ class SkillEffectConstructors:
 
     @staticmethod
     def OnHit(effect : 'SkillEffect', condition : 'AnySkillConditional' = -1):
-        return sk.new("OnHit", effect, condition=condition)
+        effect = SkillEffect("dynamic", "add", 0, condition= condition, duration=1)
+        effect.late_update = SpecialSkillEffects.on_hit_trigger
+        effect.special_data = effect
+        return effect
     
+    @staticmethod
+    def OnAttackEnd(effect : 'SkillEffect', condition : 'AnySkillConditional' = -1):
+        effect = SkillEffect("dynamic", "add", 0, condition= condition, duration=1)
+        effect.on_skill_end = SpecialSkillEffects.on_hit_trigger
+        effect.special_data = effect
+        return effect
+
     @staticmethod
     def OnHeadsHit(effect : 'SkillEffect', condition : 'AnySkillConditional' = -1):
         return sk.new("OnHeadsHit", effect, condition=condition)
@@ -949,6 +959,15 @@ class SkillEffectConstructors:
         effect = SkillEffect(status_name, "add", value, condition= condition, duration=duration, 
         data = {"x_step": value, "status_name": status_name, "y_step": y_step, "y_name": y_name, "range": (min, max), "offset" : offset, 'next_turn' : next_turn})
         effect.apply = SpecialSkillEffects.add_count_foreach_y
+        return effect
+
+    @staticmethod
+    def GainStatusCountForEachY(value : int, status_name : str, y_step : float|int, y_name : str, min : int = 0, max : int = 1, offset : int = 0,
+                            condition : 'AnySkillConditional' = -1, duration : int = -1, next_turn : bool = False):
+        
+        effect = SkillEffect(status_name, "add", value, condition= condition, duration=duration, 
+        data = {"x_step": value, "status_name": status_name, "y_step": y_step, "y_name": y_name, "range": (min, max), "offset" : offset, 'next_turn' : next_turn})
+        effect.apply = SpecialSkillEffects.gain_count_foreach_y
         return effect
 
     @staticmethod
@@ -1386,6 +1405,21 @@ class SkillEffectConstructors:
         effect = SkillEffect('dynamic', 'add', 0, apply_func=SpecialSkillEffects.apply_nothing_wduration)
         effect.on_skill_end = SpecialSkillEffects.DeiciMeurResetInsight
         return effect
+    
+    @staticmethod
+    def HeirGregorS3Bonus():
+        return SkillEffect('dynamic', 'add', 0, apply_func=SpecialSkillEffects.HeirGregorS3Bonus)
+
+    @staticmethod
+    def ZweiIshDlTremorConversion(maximum : int = 5):
+        return SkillEffectConstructors.GainStatusCountForEachY(1, StatusNames.defense_level_up, 2, 'unit.tremor', 0, maximum)
+    
+    @staticmethod
+    def ZweiIshS3Bonus():
+        return SkillEffect('dynamic', 'add', 0, apply_func=SpecialSkillEffects.ZweiIshS3Bonus)
+
+def get_dlup_str():
+    return f'unit.statuses.{StatusNames.defense_level_up}.count'
 
 class SkillEffect:
     @classmethod
@@ -2160,6 +2194,22 @@ class SpecialSkillEffects:
 
         env.effects[self] = [total, time] 
 
+    def gain_count_foreach_y(self : SkillEffect, env :Environment):
+        time = self.duration
+        data = self.special_data
+
+        increment_count : int|float = (env.get(data["y_name"]) - data["offset"]) // data["y_step"]
+        total_count : int = floor(increment_count * data["x_step"])
+
+        my_min, my_max = data["range"]
+        total : int = clamp(total_count, my_min, my_max)
+        status_name : str = data['status_name']
+        if data['next_turn']:
+            env.unit.apply_status_next_turn(status_name, 0, total_count)
+        else:
+            env.unit.apply_status(status_name, 0, total_count)
+
+        env.effects[self] = [total, time] 
 
     def typed_damage_up(self : SkillEffect, env :Environment):
         dmg_type = self.special_data["type"]
@@ -3195,6 +3245,31 @@ class SpecialSkillEffects:
             else:
                 env.unit.insight = 1
         env.effects[self] = [0, -1]
+    
+    def HeirGregorS3Bonus(self : SkillEffect, env : Environment):
+        env.effects[self] = [0, -1]
+        if randint(1, 2) == 2:
+            env.unit.apply_status_next_turn(StatusNames.plus_coin_boost, 0, 1)
+            env.unit.apply_status_next_turn(StatusNames.damage_up, 0, 3)
+            return
+        if not env.enemy.has_status('Sinking'): return
+        sinking_potency : int = env.enemy.statuses['Sinking'].potency
+        if sinking_potency >= 10:
+            env.unit.apply_status_next_turn(StatusNames.plus_coin_boost, 0, 1)
+            env.unit.apply_status_next_turn(StatusNames.damage_up, 0, 3)
+            env.enemy.statuses['Sinking'].potency -= 10
+            return
+
+    def ZweiIshS3Bonus(self : SkillEffect, env : Environment):
+        current_tremor : int = env.unit.tremor
+        env.unit.tremor = 0
+        bonus : float
+        if current_tremor > 20:
+            bonus : float = clamp((current_tremor - 20) * 0.05, 0, 0.5)
+            env.dynamic += bonus
+        else:
+            bonus = 0.0
+        env.effects[self] = [bonus, -1]
 
 
 SkillConditional = Callable[[SkillEffect, Environment], bool]
@@ -3230,6 +3305,10 @@ class SkillConditionals:
     @staticmethod
     def CourrierTrunkBelow15(self : SkillEffect, env : Environment, data = None):
         return (getattr(env.unit, 'trunk', 0) < 15)
+    
+    @staticmethod
+    def HasDefensiveStance(self : SkillEffect, env : Environment, data = None) -> bool:
+        return True if getattr(env.unit, 'defense_stance', 0) else False
 
 GetterMethod = Callable[[SkillEffect, Environment], float|int|Any]
 SetterMethod = Callable[[SkillEffect, Environment, float|int|Any], None]
@@ -3253,8 +3332,11 @@ class StatusNames:
     haste = 'Haste'
     offense_level_up = 'Offense Level Up'
     defense_level_down = 'Defense Level Down'
+    defense_level_up = 'Defense Level Up'
     fragile = "Fragile"
+    damage_up = "Damage Up"
     atk_power_up = 'Attack Power Up'
+    plus_coin_boost = 'Plus Coin Boost'
 
     photoelectricity = 'Photoelectricity'
     charge_barrier = 'Charge Barrier'
@@ -3309,15 +3391,28 @@ class StatusEffect:
                 new_effect._has_potency = False
                 new_effect.on_skill_start = SpecialStatusEffects.apply_def_down
                 new_effect.on_turn_end = SpecialStatusEffects.consume_all
+            case 'Defense Level Up':
+                new_effect._has_potency = False
+                new_effect.on_skill_start = SpecialStatusEffects.apply_def_up
+                new_effect.on_turn_end = SpecialStatusEffects.consume_all
             case 'Attack Power Up':
                 new_effect._has_potency = False
                 new_effect.on_skill_start = SpecialStatusEffects.apply_atk_power_up
+                new_effect.on_turn_end = SpecialStatusEffects.consume_all
+            case 'Plus Coin Boost':
+                new_effect._has_potency = False
+                new_effect.on_skill_start = SpecialStatusEffects.apply_coin_power
                 new_effect.on_turn_end = SpecialStatusEffects.consume_all
             case 'Fragile':
                 new_effect._has_potency = False
                 new_effect._max_count = 10
                 new_effect.on_skill_start = SpecialStatusEffects.apply_fragile
-                new_effect.on_turn_end = SpecialStatusEffects.consume_all           
+                new_effect.on_turn_end = SpecialStatusEffects.consume_all
+            case "Damage Up":
+                new_effect._has_potency = False
+                new_effect._max_count = 10
+                new_effect.on_skill_start = SpecialStatusEffects.apply_damage_up
+                new_effect.on_turn_end = SpecialStatusEffects.consume_all
             case 'Photoelectricity':
                 new_effect._has_potency = False
                 new_effect.on_skill_start = SpecialStatusEffects.apply_photoelectricity
@@ -3552,11 +3647,23 @@ class SpecialStatusEffects:
         if is_defending: return
         new_effect = skc.BasePowerUp(self.count)
         env.apply_queue.append(new_effect)
+
+    @staticmethod
+    def apply_coin_power(self : 'StatusEffect', env : Environment, is_defending : bool = True):
+        if is_defending: return
+        new_effect = skc.CoinPower(self.count)
+        env.apply_queue.append(new_effect)
     
     @staticmethod
     def apply_def_down(self : 'StatusEffect', env : Environment, is_defending : bool = True):
         if not is_defending: return
         new_effect = skc.DefenseLevelDown(self.count)
+        env.apply_queue.append(new_effect)
+    
+    @staticmethod
+    def apply_def_up(self : 'StatusEffect', env : Environment, is_defending : bool = True):
+        if not is_defending: return
+        new_effect = skc.DefenseLevelDown(-self.count)
         env.apply_queue.append(new_effect)
     
     @staticmethod
@@ -3575,6 +3682,12 @@ class SpecialStatusEffects:
         new_effect = skc.Fragile(self.count, self)
         env.apply_queue.append(new_effect)
     
+    @staticmethod
+    def apply_damage_up(self : 'StatusEffect', env : Environment, is_defending : bool = True):
+        if is_defending: return
+        new_effect = skc.Fragile(self.count, self)
+        env.apply_queue.append(new_effect)
+
     @staticmethod
     def apply_typed_damage_up(self : 'StatusEffect', env : Environment, is_defending : bool = True):
         if is_defending: return
@@ -4282,7 +4395,30 @@ skc.DeiciMeurS3Insight(), skc.DeiciMeurResetInsight()]),
 [[skc.OnHit(skc.GainPoise(2)), skc.OnHit(skc.GainPoiseCount(1))], [skc.OnHit(skc.ApplyStatus('Sinking', 2)), skc.OnHit(skc.ApplyStatusCount('Sinking', 1))],
 [skc.OnHit(skc.ApplyStatus('Sinking', 2))]], [skc.DAddXForEachY(2, 'coin_power', 6, 'enemy.statuses.Sinking.potency', 0, 2)]),
 "Pañata Party" : Skill((8, 11, 1), -3, "Pañata Party", ("Blunt", "Gloom"), [[skc.OnCritRoll(skc.DAddXForEachY(0.3, 'dynamic', 5, 'unit.poise_count', 0, 0.3))]],
-[skc.AddXForEachY(0.01, 'crit_odds_bonus', -1, 'enemy.sp', 0, 0.45)])
+[skc.AddXForEachY(0.01, 'crit_odds_bonus', -1, 'enemy.sp', 0, 0.45)]),
+
+"Sabre Slash" : Skill((5, 6, 1), 5, "Sabre Slash", ("Slash", "Envy"), [[skc.OnHit(skc.ApplyStatus('Sinking', 3))]], 
+[skc.DAddXForEachY(1, 'coin_power', 3, 'enemy.statuses.Sinking.potency', 0, 2)]),
+"Remise" : Skill((4, 6, 2), 5, "Remise", ("Slash", "Gloom"), [[], [skc.OnHit(skc.ApplyStatusCount('Sinking', 3))]],
+[skc.DAddXForEachY(1, 'coin_power', 6, 'enemy.statuses.Sinking.potency'), skc.ApplyStatusCount('Sinking', 2, condition=0)]),
+"Nightmare Hunt" : Skill((4, 3, 4), 5, "Nightmare Hunt", ("Slash", "Lust"), 
+[[skc.OnHit(skc.ApplyStatus("Sinking", 1))] for _ in range(3)] + [[skc.OnHit(skc.HeirGregorS3Bonus())]]),
+
+"Zwei Knight's Greatsword Form" : Skill((3, 4, 2), 0, "Zwei Knight's Greatsword Form", ("Blunt", "Pride"),
+[[skc.OnHit(skc.GainStatusNextTurn(StatusNames.defense_level_up, 0, 2))] for _ in range(2)], 
+[skc.ZweiIshDlTremorConversion(3), skc.AddXForEachY(1, 'base', 4, get_dlup_str(), 0, 2)]),
+"Can't Let You Through." : Skill((4, 4, 3), 1, "Can't Let You Through.", ("Blunt", "Envy"), 
+[[], [skc.OnHit(skc.GainStatusNextTurn(StatusNames.defense_level_up, 0, 4))], []],
+[skc.ZweiIshDlTremorConversion(5), skc.AddXForEachY(1, 'coin_power', 4, get_dlup_str()), skc.GainTremor(3, 0)]),
+"Ward" : Skill((5, 4, 3), 2, "Ward", ("Blunt", "Gluttony"), [[], [], [skc.ZweiIshS3Bonus()]],
+[skc.ZweiIshDlTremorConversion(5), skc.DynamicBonus(0.7, SkillConditionals.HasDefensiveStance), skc.AddXForEachY(1, 'coin_power', 4, get_dlup_str(), 0, 4), 
+skc.GainTremor(3, 0)]),
+
+"Expend Knowledge" : Skill((3, 4, 2), -1, "Expend Knowledge", ("Pierce", "Gluttony"), [[], []], [skc.DAddXForEachY(1, 'coin_power', 5, 'enemy.statuses.Sinking.potency')]),
+"Seal Shut" : Skill((4, 3, 3), -1, "Seal Shut", ("Blunt", "Lust"), [[]]+[[skc.OnHit(skc.AddStatusPotForEachY(1, 'Sinking', 1, 'unit.insight', 0, 3))] for _ in [0,0]],
+[skc.DAddXForEachY(1, 'coin_power', 5, 'enemy.statuses.Sinking.potency')]),
+"Grace of Knowledge" : Skill((4, 2, 4), 3, "Grace of Knowledge", ("Blunt", "Sloth"), [[], [], [], [skc.OnHit(skc.ApplyStatusCount('Sinking', 3))]], [skc.CoinPower(1, 0)])
+
 }
 ENEMIES = {
     "Test" : Enemy(40, 100, {}, {}),
@@ -4398,5 +4534,8 @@ UNITS = {
     "Chef Gregor" : Unit("Chef Gregor", (gs("Keep It Fresh"), gs("You Fresh Enough?"), gs("Butcher Viand"))),
     "Devyat Rodya" : Unit("Devyat Rodya", (gs("CT - DK"), gs("CT - GR"), gs("I Trust Ya, Polu!"))),
     "Deici Meur" : Unit("Deici Meur", (gs("Studious Dedication"), gs("Moment of Erudition"), gs("Scorch Knowledge"))),
-    "Mariachi Sinclair" : Unit("Mariachi Sinclair", (gs("Baile y Rola"), gs("Danza de Pasión"), gs("Pañata Party")))
+    "Mariachi Sinclair" : Unit("Mariachi Sinclair", (gs("Baile y Rola"), gs("Danza de Pasión"), gs("Pañata Party"))),
+    "Heir Gregor" : Unit("Heir Gregor", (gs("Sabre Slash"), gs("Remise"), gs("Nightmare Hunt"))),
+    "Zwei Ish" : Unit("Zwei Ish", (gs("Zwei Knight's Greatsword Form"), gs("Can't Let You Through."), gs("Ward"))),
+    "Deici Sang" : Unit("Deici Sang", (gs("Expend Knowledge"), gs("Seal Shut"), gs("Grace of Knowledge")))
     }

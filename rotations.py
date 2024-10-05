@@ -3200,3 +3200,146 @@ def mariachi_rotation(unit : Unit, enemy : Enemy, debug : bool = False, poise : 
     
     if debug: print("-".join(sequence))
     return total
+
+def heir_gregor_rotation(unit : Unit, enemy : Enemy, debug : bool = False, enemy_sinking : tuple[int, int] = (0,0), passive_frequency : float = 0,
+                         sp_variation : int = 0, start_sp : int = 45):
+    sequence = [None for _ in range(6)]
+    bag = get_bag()
+
+    skills = {1 : unit.skill_1, 2 : unit.skill_2, 3 : unit.skill_3}
+    total = 0
+    enemy.apply_status('Sinking', 0, 0)
+    the_sinking : backend.StatusEffect = enemy.statuses['Sinking']
+    the_sinking.potency, the_sinking.count = enemy_sinking
+    unit.sp = start_sp
+    prev_sp : int = start_sp
+    passive1 : backend.StatusEffect = backend.skc.DAddXForEachY(0.02, 'dynamic', 1, 'enemy.statuses.Sinking.potency', 0, 0.4)
+    for i in range(6):
+        if i % 2 == 0:
+            unit.sp -= sp_variation
+        else:
+            unit.sp += sp_variation
+        unit.clamp_sp()
+        unit.on_turn_start()
+        dashboard = [bag[0], bag[1]]
+        a = max(dashboard)
+        b = min(dashboard)
+        decision = a
+
+        sp_difference_chunks : int = backend.clamp(abs(unit.sp - prev_sp) // 5, 0, 5)
+        passive2 : backend.StatusEffect = backend.skc.DamageUp(sp_difference_chunks)
+        prev_sp = unit.sp
+        
+        result = skills[decision].calculate_damage(unit, enemy, debug=debug, entry_effects=None if random() > passive_frequency else [passive1, passive2])
+        total += result
+        
+        if debug: print(result)
+        sequence[i] = str(decision)
+        bag.remove(decision)
+
+        
+        
+        if len(bag) < 2:
+            bag += get_bag()
+        
+        unit.on_turn_end()
+    
+    if debug: print("-".join(sequence))
+    return total
+
+def zwei_ish_rotation(unit : Unit, enemy : Enemy, debug : bool = False, tremor : int = 0, dl_up : int = 0, start_stance : int = 0, passive_active : bool = False):
+    sequence = [None for _ in range(6)]
+    bag = get_bag()
+
+    skills = {1 : unit.skill_1, 2 : unit.skill_2, 3 : unit.skill_3}
+    total = 0
+    unit.tremor = tremor
+    unit.apply_status(backend.StatusNames.defense_level_up, 0, 0)
+    the_dl_up : backend.StatusEffect = unit.statuses[backend.StatusNames.defense_level_up]
+    the_dl_up.count = dl_up
+    unit.defense_stance = start_stance
+    unit.skill_2.set_conds([True])
+    unit.skill_3.set_conds([True])
+    for i in range(6):
+        unit.on_turn_start()
+        if unit.defense_stance:
+            the_dl_up.count += 5
+        if passive_active:
+            bonus_dl : int = backend.clamp(unit.tremor, 0, 5)
+            the_dl_up.count += bonus_dl
+            if unit.defense_stance:
+                the_dl_up.count += bonus_dl
+        dashboard = [bag[0], bag[1]]
+        a = max(dashboard)
+        b = min(dashboard)
+        decision = a
+        if i < 5:
+            if (bag[1] == 3) and unit.defense_stance <= 0:
+                decision = 'Guard'
+            elif len(bag) >= 3:
+                if bag[2] == 3 and unit.defense_stance <= 0:
+                    decision = 'Guard'
+       
+        if decision != 'Guard':
+            result = skills[decision].calculate_damage(unit, enemy, debug=debug)
+            total += result
+        else:
+            unit.tremor += 10
+            unit.defense_stance = 2
+            result = 'Guard'
+        
+        if debug: print(result)
+        sequence[i] = str(decision)
+        bag.remove(decision) if decision != 'Guard' else bag.pop(0)
+
+        
+        
+        if len(bag) < 2:
+            bag += get_bag()
+        if unit.tremor > 0: unit.tremor -= 1
+        if unit.defense_stance > 0: unit.defense_stance -= 1
+        unit.on_turn_end()
+    if debug: print("-".join(sequence))
+    return total
+
+def deici_sang_rotation(unit : Unit, enemy : Enemy, debug : bool = False, start_sinking : tuple[int, int] = (0,0), below_50 : bool = False, is_perfect : bool = False):
+    sequence = [None for _ in range(6)]
+    bag = get_bag() if not is_perfect else [3, 1, 2, 1, 2, 1]
+
+    skills = {1 : unit.skill_1, 2 : unit.skill_2, 3 : unit.skill_3}
+    total = 0
+    unit.skill_3.set_conds([below_50])
+    enemy.apply_status('Sinking', 0, 0)
+    the_sinking : backend.StatusEffect = enemy.statuses['Sinking']
+    the_sinking.potency, the_sinking.count = start_sinking
+    unit.insight = 1
+    for i in range(6):
+        dashboard = [bag[0], bag[1]]
+        a = max(dashboard)
+        b = min(dashboard)
+        decision = a
+
+        if a == 3: pass
+        elif a == 2:
+            if b == 1: 
+                bag.remove(b)
+                unit.insight = b
+        else:
+            bag.remove(b)
+            unit.insight = b
+       
+        
+        result = skills[decision].calculate_damage(unit, enemy, debug=debug)
+        total += result
+        
+        if debug: print(result)
+        sequence[i] = str(decision)
+        bag.remove(decision)
+
+        
+        
+        if len(bag) < 2:
+            bag += get_bag() if not is_perfect else [3, 1, 2, 1, 2, 1]
+    
+    if debug: print("-".join(sequence))
+    return total
