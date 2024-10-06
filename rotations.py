@@ -3343,3 +3343,40 @@ def deici_sang_rotation(unit : Unit, enemy : Enemy, debug : bool = False, start_
     
     if debug: print("-".join(sequence))
     return total
+
+def bush_sang_rotation(unit : Unit, enemy : Enemy, debug : bool = False, start_tremor : int = 0,  start_sinking : tuple[int, int] = (0,0), 
+                       ignore_deluge : bool = True, passive_active : bool = False, part_count : int = 1):
+    sequence = [None for _ in range(6)]
+    bag = get_bag()
+
+    skills = {1 : unit.skill_1, 2 : unit.skill_2, 3 : unit.skill_3}
+    total = 0
+    unit.tremor = start_tremor
+    unit.passive = passive_active
+    unit.max_aoe = part_count
+    enemy.apply_status('Sinking', 0, 0)
+    the_sinking : backend.StatusEffect = enemy.statuses['Sinking']
+    the_sinking.potency, the_sinking.count = start_sinking
+    for i in range(6):
+        enemy.on_turn_start()
+        unit.atk_weight = 1
+        dashboard = [bag[0], bag[1]]
+        a = max(dashboard)
+        b = min(dashboard)
+        decision = a
+       
+        if debug: print(f'Before Attack : {the_sinking.potency}x{the_sinking.count} Sinking, {unit.tremor} self-tremor')
+        result : int = skills[decision].calculate_damage(unit, enemy, debug=debug, ignore_fixed_damage=ignore_deluge)
+        total += result * min(part_count, unit.atk_weight)   
+        if debug: print(result, '*', f'min({unit.max_aoe=}, {unit.atk_weight=})')
+        sequence[i] = str(decision)
+        bag.remove(decision)
+
+        
+        
+        if len(bag) < 2:
+            bag += get_bag()
+        if unit.tremor > 0: unit.tremor -= 1
+        enemy.on_turn_end()
+    if debug: print("-".join(sequence))
+    return total

@@ -122,6 +122,14 @@ class Enemy:
             if not effect.is_active(): continue
             effect.on_hit(effect, env)
     
+    def take_damage(self, damage : int, env : 'Environment'):
+        self.hp -= damage
+        if self.hp <= 0:
+            self.hp = 0
+            if self.can_break: 
+                self.break_part()
+        self.update_stagger_level()
+    
     def on_skill_start(self, env : 'Environment', is_defending : bool = True):
         effect_name : str
         effect : StatusEffect
@@ -278,16 +286,19 @@ class Skill:
     def set_crits(self, seq):
         self.crits = seq
     
-    def apply_effect_if_cond(self, effect: "SkillEffect", env, condition_state):
+    def apply_effect_if_cond(self, effect: "SkillEffect", env : 'Environment', condition_state):
         if callable(effect.condition):
             if effect.condition(effect, env):
                 effect.apply(effect, env)
+                #if env.debug_mode: print(f'applying effect with function {effect.apply.__name__}')
         elif effect.condition < 0:
             effect.apply(effect, env)
+            #if env.debug_mode: print(f'applying effect with function {effect.apply.__name__}')
 
         elif effect.condition < len(condition_state):
             if condition_state[effect.condition]:
                 effect.apply(effect, env)
+                #if env.debug_mode: print(f'applying effect with function {effect.apply.__name__}')
         else:
             raise IndexError
 
@@ -395,7 +406,6 @@ class Skill:
             for effect in env.effects:
                 if effect.late_update:
                     effect.late_update(effect, env)
-            
             
 
             if debug:
@@ -671,7 +681,7 @@ class Environment:
 
         self.did_crit : bool
         self.sequence : list[str|None]
-        self.ignore_fixed_damage : bool
+        self.ignore_fixed_damage : bool = True
         self.current_coin_index : int = -1
         self.apply_queue : list[SkillEffect] = []
 
@@ -806,7 +816,7 @@ class SkillEffectConstructors:
         return SkillEffectConstructors.ApplyStatus(status_type, 0, count, condition)
 
     @staticmethod
-    def ApplyStatusNextTurn(status_type : str, potency : int, count : int, condition : 'AnySkillConditional' = -1):
+    def ApplyStatusNextTurn(status_type : str, potency : int, count : int = 0, condition : 'AnySkillConditional' = -1):
         return sk.new("ApplyStatusNextTurn", (status_type, potency, count), condition=condition)
     
     @staticmethod
@@ -878,17 +888,17 @@ class SkillEffectConstructors:
         return sk.new("ConsumeRessourceTrigger", (name, count, treshold, effect), condition=condition)
 
     @staticmethod
-    def OnHit(effect : 'SkillEffect', condition : 'AnySkillConditional' = -1):
+    def OnHit(other_effect : 'SkillEffect', condition : 'AnySkillConditional' = -1):
         effect = SkillEffect("dynamic", "add", 0, condition= condition, duration=1)
         effect.late_update = SpecialSkillEffects.on_hit_trigger
-        effect.special_data = effect
+        effect.special_data = other_effect
         return effect
     
     @staticmethod
-    def OnAttackEnd(effect : 'SkillEffect', condition : 'AnySkillConditional' = -1):
+    def OnAttackEnd(other_effect : 'SkillEffect', condition : 'AnySkillConditional' = -1):
         effect = SkillEffect("dynamic", "add", 0, condition= condition, duration=1)
         effect.on_skill_end = SpecialSkillEffects.on_hit_trigger
-        effect.special_data = effect
+        effect.special_data = other_effect
         return effect
 
     @staticmethod
@@ -1417,6 +1427,24 @@ class SkillEffectConstructors:
     @staticmethod
     def ZweiIshS3Bonus():
         return SkillEffect('dynamic', 'add', 0, apply_func=SpecialSkillEffects.ZweiIshS3Bonus)
+    
+    @staticmethod
+    def SpicebushS3Bonus():
+        effect = SkillEffect('dynamic', 'add', 0, apply_func=SpecialSkillEffects.SpicebushS3Bonus)
+        effect.apply = SpecialSkillEffects.SpicebushS3Bonus
+        return effect
+    
+    @staticmethod
+    def SpiceBushSinkingDeluge():
+        effect = SkillEffect('dynamic', 'add', 0, apply_func=SpecialSkillEffects.SpiceBushSinkingDeluge)
+        effect.apply = SpecialSkillEffects.SpiceBushSinkingDeluge
+        return effect
+    
+    @staticmethod
+    def SpicebushS2AOE():
+        effect = SkillEffect('dynamic', 'add', 0, apply_func=SpecialSkillEffects.SpicebushS2AOE)
+        effect.apply = SpecialSkillEffects.SpicebushS2AOE
+        return effect
 
 def get_dlup_str():
     return f'unit.statuses.{StatusNames.defense_level_up}.count'
@@ -1793,10 +1821,10 @@ class SkillEffect:
         self.on_poise_gained = None
         self.on_status_applied = None
 
-        if not apply_func is None: self.apply = apply_func
+        if not (apply_func is None): self.apply = apply_func
         else: self.apply = SpecialSkillEffects.apply
 
-        if not remove_func is None: self.remove = remove_func
+        if not (remove_func is None): self.remove = remove_func
         else: self.remove = SpecialSkillEffects.remove
 
         self.on_skill_end = SkillEffect.on_skill_end
@@ -1834,6 +1862,7 @@ class SpecialSkillEffects:
     def on_hit_trigger(self : SkillEffect, env : Environment):
         effect_to_trigger : SkillEffect = self.special_data
         env.apply_queue.append(effect_to_trigger)
+        #print(f'OnHit applying {effect_to_trigger.apply.__}')
 
     def on_heads_hit_trigger(self : SkillEffect, env : Environment):
         effect_to_trigger : SkillEffect = self.special_data
@@ -1940,8 +1969,6 @@ class SpecialSkillEffects:
         dynamic_bonus : float = env.effects[self][0]
         env.effects[self][0] = 0
         env.dynamic -= dynamic_bonus
-    
-
 
     def apply_status(self : SkillEffect, env : Environment):
         pot, count, = self.special_data[0], self.special_data[1]
@@ -1949,7 +1976,6 @@ class SpecialSkillEffects:
 
         env.enemy.apply_status(status_type, pot, count)
         env.on_status_applied(status_type, pot, count)
-
         env.effects[self] = [0, -1]
     
     def apply_status_next_turn(self : SkillEffect, env : Environment):
@@ -2825,6 +2851,7 @@ class SpecialSkillEffects:
         bonus_mult : float = clamp(0.25 * env.unit.coins, 0.0, 1.0)
         bonus_dmg : int = floor(this_coin_dmg * bonus_mult)
         env.total += bonus_dmg
+        env.enemy.hp -= bonus_dmg
         env.unit.ammo -= 1
     
     def PirateGregPassiveMegaLateUpdate(self : SkillEffect, env : Environment):
@@ -3059,6 +3086,7 @@ class SpecialSkillEffects:
         mult : float = 0.1 if env.sequence[env.current_coin_index] == "Heads" else 0.0
         bonus : int = floor(env.current_damage * mult)
         env.total += bonus
+        env.enemy.take_damage(bonus, env)
         env.effects[self] = [bonus, -1]
 
     def LiuGregorPassive(self : SkillEffect, env : Environment):
@@ -3188,6 +3216,7 @@ class SpecialSkillEffects:
     def GCorpGregorS3Bonus(self : SkillEffect, env : Environment):
         mult : float = 0.3 if env.enemy.has_status('Rupture') else 0.0
         bonus : int = floor(env.current_damage * mult)
+        env.enemy.take_damage(bonus, env)
         env.total += bonus
         env.effects[self] = [bonus, -1]
     
@@ -3271,6 +3300,36 @@ class SpecialSkillEffects:
             bonus = 0.0
         env.effects[self] = [bonus, -1]
 
+    def SpicebushS3Bonus(self : SkillEffect, env : Environment):
+        mult : float = 0.4 if env.unit.tremor >= 10 else 0.0
+        bonus : int = floor(env.current_damage * mult)
+        env.enemy.take_damage(bonus, env)
+        env.total += bonus
+        env.effects[self] = [bonus, -1]
+    def SpiceBushSinkingDeluge(self : SkillEffect, env : Environment):
+        if not env.enemy.has_status('Sinking'): return
+        the_sinking : StatusEffect = env.enemy.statuses['Sinking']
+        if the_sinking.potency >= 6:
+            bonus : int = the_sinking.potency * the_sinking.count
+            bonus = floor(bonus * env.enemy.sin_res['Gloom'])
+            if not env.ignore_fixed_damage:
+                env.total += bonus
+                env.enemy.take_damage(bonus, env)
+        
+        the_sinking.potency = 0
+        the_sinking.count = 0
+        env.effects[self] = [0, -1]
+
+    def SpicebushS2AOE(self : SkillEffect, env : Environment):
+        env.effects[self] = [0, -1]
+        if env.unit.tremor < 6: 
+            env.unit.atk_weight = 1
+            return
+        env.unit.tremor -= 6
+        env.unit.atk_weight = 3
+        if getattr(env.unit, 'passive', False):
+            if env.unit.max_aoe > 1:
+                env.dynamic += 0.3
 
 SkillConditional = Callable[[SkillEffect, Environment], bool]
 AnySkillConditional = Union[int, SkillConditional]
@@ -4417,7 +4476,16 @@ skc.GainTremor(3, 0)]),
 "Expend Knowledge" : Skill((3, 4, 2), -1, "Expend Knowledge", ("Pierce", "Gluttony"), [[], []], [skc.DAddXForEachY(1, 'coin_power', 5, 'enemy.statuses.Sinking.potency')]),
 "Seal Shut" : Skill((4, 3, 3), -1, "Seal Shut", ("Blunt", "Lust"), [[]]+[[skc.OnHit(skc.AddStatusPotForEachY(1, 'Sinking', 1, 'unit.insight', 0, 3))] for _ in [0,0]],
 [skc.DAddXForEachY(1, 'coin_power', 5, 'enemy.statuses.Sinking.potency')]),
-"Grace of Knowledge" : Skill((4, 2, 4), 3, "Grace of Knowledge", ("Blunt", "Sloth"), [[], [], [], [skc.OnHit(skc.ApplyStatusCount('Sinking', 3))]], [skc.CoinPower(1, 0)])
+"Grace of Knowledge" : Skill((4, 2, 4), 3, "Grace of Knowledge", ("Blunt", "Sloth"), 
+[[], [], [], [skc.OnHit(skc.ApplyStatusCount('Sinking', 3))]], [skc.CoinPower(1, 0)]),
+
+"Sprouting Bud" : Skill((3, 2, 3), 4, "Sprouting Bud", ("Pierce", "Gluttony"), 
+[[], [skc.OnHit(skc.ApplyStatusCountNextTurn('Sinking', 1))], [skc.OnHit(skc.ApplyStatusCountNextTurn('Sinking', 2))]], [skc.GainTremor(3)]),
+"Moment's Floral Breeze" : Skill((4, 4, 3), 3, "Moment's Floral Breeze", ("Blunt", "Sloth"), [[skc.OnHit(skc.ApplyStatusNextTurn('Sinking', 2))] for _ in range(3)],
+[skc.DAddXForEachY(1, 'coin_power', 6, 'enemy.statuses.Sinking.count'), skc.ResetAttackWeight(1), skc.SpicebushS2AOE()]),
+"Bloodsteeped Scent" : Skill((6, 4, 3), 5, "Bloodsteeped Scent", ("Pierce", "Pride"), 
+[[skc.OnHit(skc.ApplyStatusCount('Sinking', 1))], [skc.OnHit(skc.ApplyStatusCount('Sinking', 1))], 
+[skc.OnHit(skc.SpicebushS3Bonus()), skc.OnHit(skc.SpiceBushSinkingDeluge())]], [skc.GainTremor(6)])
 
 }
 ENEMIES = {
@@ -4537,5 +4605,6 @@ UNITS = {
     "Mariachi Sinclair" : Unit("Mariachi Sinclair", (gs("Baile y Rola"), gs("Danza de Pasión"), gs("Pañata Party"))),
     "Heir Gregor" : Unit("Heir Gregor", (gs("Sabre Slash"), gs("Remise"), gs("Nightmare Hunt"))),
     "Zwei Ish" : Unit("Zwei Ish", (gs("Zwei Knight's Greatsword Form"), gs("Can't Let You Through."), gs("Ward"))),
-    "Deici Sang" : Unit("Deici Sang", (gs("Expend Knowledge"), gs("Seal Shut"), gs("Grace of Knowledge")))
+    "Deici Sang" : Unit("Deici Sang", (gs("Expend Knowledge"), gs("Seal Shut"), gs("Grace of Knowledge"))),
+    "Bush Sang" : Unit("Bush Sang", (gs("Sprouting Bud"), gs("Moment's Floral Breeze"), gs("Bloodsteeped Scent")))
     }
