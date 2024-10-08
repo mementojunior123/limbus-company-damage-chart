@@ -1445,6 +1445,15 @@ class SkillEffectConstructors:
         effect = SkillEffect('dynamic', 'add', 0, apply_func=SpecialSkillEffects.SpicebushS2AOE)
         effect.apply = SpecialSkillEffects.SpicebushS2AOE
         return effect
+    
+    @staticmethod
+    def Fanatic(count : int, status_effect : 'StatusEffect'):
+        effect = SkillEffect('base', 'add', count)
+        effect.special_data = status_effect
+        effect.apply = SpecialSkillEffects.apply_nothing_wduration
+        effect.early_update = SpecialSkillEffects.FanaticEarlyUpdate
+        effect.megalate_update = SpecialSkillEffects.FanaticCleanup
+        return effect
 
 def get_dlup_str():
     return f'unit.statuses.{StatusNames.defense_level_up}.count'
@@ -1969,6 +1978,19 @@ class SpecialSkillEffects:
         dynamic_bonus : float = env.effects[self][0]
         env.effects[self][0] = 0
         env.dynamic -= dynamic_bonus
+    
+    def FanaticEarlyUpdate(self : SkillEffect, env : Environment):
+        fanatic : StatusEffect = self.special_data
+        self.value = fanatic.count
+        if self.value <= 0: env.effects[self][0] = 0; return
+        base_bonus : int = fanatic.count if env.enemy.has_status('Nails') else 0
+        env.effects[self][0] = base_bonus
+        env.base += base_bonus
+    
+    def FanaticCleanup(self : SkillEffect, env : Environment):
+        base_bonus : int = env.effects[self][0]
+        env.effects[self][0] = 0
+        env.base -= base_bonus
 
     def apply_status(self : SkillEffect, env : Environment):
         pot, count, = self.special_data[0], self.special_data[1]
@@ -3511,12 +3533,15 @@ class StatusEffect:
             case "Nails":
                 new_effect._has_potency = False
                 new_effect.on_turn_end = SpecialStatusEffects.drain_half_count
-            
             case "Gaze":
                 new_effect._has_potency = False
                 new_effect._max_count = 1
                 new_effect.on_skill_start = SpecialStatusEffects.apply_gaze
-                new_effect.on_turn_end = SpecialStatusEffects.consume_all   
+                new_effect.on_turn_end = SpecialStatusEffects.consume_all
+            case 'Fanatic':
+                new_effect._has_potency = False
+                new_effect.on_skill_start = SpecialStatusEffects.apply_fanatic
+                new_effect.on_turn_end = SpecialStatusEffects.consume_all
 
             case _:
                 pass
@@ -3729,6 +3754,12 @@ class SpecialStatusEffects:
     def apply_fragile(self : 'StatusEffect', env : Environment, is_defending : bool = True):
         if not is_defending: return
         new_effect = skc.Fragile(self.count, self)
+        env.apply_queue.append(new_effect)
+    
+    @staticmethod
+    def apply_fanatic(self : 'StatusEffect', env : Environment, is_defending : bool = True):
+        if is_defending: return
+        new_effect = skc.Fanatic(self.count, self)
         env.apply_queue.append(new_effect)
     
     @staticmethod
