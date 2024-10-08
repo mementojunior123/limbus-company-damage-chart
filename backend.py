@@ -1916,7 +1916,7 @@ class SpecialSkillEffects:
     
     def reuse_coin_cond_late_update(self : SkillEffect, env : Environment):
         max_reuse_count : int = self.value[0]
-        eval_func : Callable[[SkillEffect, env], bool] = self.value[1]
+        eval_func : Callable[[SkillEffect, Environment], bool] = self.value[1]
         if not eval_func(self, env): return
         current_reuse_count = self.special_data
         if current_reuse_count < max_reuse_count:
