@@ -1985,12 +1985,12 @@ class SpecialSkillEffects:
         if self.value <= 0: env.effects[self][0] = 0; return
         base_bonus : int = fanatic.count if env.enemy.has_status('Nails') else 0
         env.effects[self][0] = base_bonus
-        env.base += base_bonus
+        env.current_power += base_bonus
     
     def FanaticCleanup(self : SkillEffect, env : Environment):
         base_bonus : int = env.effects[self][0]
         env.effects[self][0] = 0
-        env.base -= base_bonus
+        env.current_power -= base_bonus
 
     def apply_status(self : SkillEffect, env : Environment):
         pot, count, = self.special_data[0], self.special_data[1]
@@ -4516,7 +4516,11 @@ skc.GainTremor(3, 0)]),
 [skc.DAddXForEachY(1, 'coin_power', 6, 'enemy.statuses.Sinking.count'), skc.ResetAttackWeight(1), skc.SpicebushS2AOE()]),
 "Bloodsteeped Scent" : Skill((6, 4, 3), 5, "Bloodsteeped Scent", ("Pierce", "Pride"), 
 [[skc.OnHit(skc.ApplyStatusCount('Sinking', 1))], [skc.OnHit(skc.ApplyStatusCount('Sinking', 1))], 
-[skc.OnHit(skc.SpicebushS3Bonus()), skc.OnHit(skc.SpiceBushSinkingDeluge())]], [skc.GainTremor(6)])
+[skc.OnHit(skc.SpicebushS3Bonus()), skc.OnHit(skc.SpiceBushSinkingDeluge())]], [skc.GainTremor(6)]),
+
+"Drive" : Skill((5, 1, 2), 0, "Drive", ("Pierce", "Sloth"), [[], []], [skc.CoinPower(2, 0)]),
+"You Are Cleansed of Sin" : Skill((6, 3, 2), 0, "You Are Cleansed of Sin", ("Blunt", "Wrath"), [[skc.OnHit(skc.ApplyStatusCount("Nails", 3))], []]),
+"Annihilate Heretics" : Skill((8, 3, 2), 0, "Annihilate Heretics", ("Pierce", "Pride"), [[skc.OnHit(skc.ApplyStatusCount("Nails", 2))], []]),
 
 }
 ENEMIES = {
@@ -4637,5 +4641,6 @@ UNITS = {
     "Heir Gregor" : Unit("Heir Gregor", (gs("Sabre Slash"), gs("Remise"), gs("Nightmare Hunt"))),
     "Zwei Ish" : Unit("Zwei Ish", (gs("Zwei Knight's Greatsword Form"), gs("Can't Let You Through."), gs("Ward"))),
     "Deici Sang" : Unit("Deici Sang", (gs("Expend Knowledge"), gs("Seal Shut"), gs("Grace of Knowledge"))),
-    "Bush Sang" : Unit("Bush Sang", (gs("Sprouting Bud"), gs("Moment's Floral Breeze"), gs("Bloodsteeped Scent")))
+    "Bush Sang" : Unit("Bush Sang", (gs("Sprouting Bud"), gs("Moment's Floral Breeze"), gs("Bloodsteeped Scent"))),
+    "N Meur" : Unit("N Meur", (gs("Drive"), gs("You Are Cleansed of Sin"), gs("Annihilate Heretics")))
     }

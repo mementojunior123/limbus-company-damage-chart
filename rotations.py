@@ -3380,3 +3380,40 @@ def bush_sang_rotation(unit : Unit, enemy : Enemy, debug : bool = False, start_t
         enemy.on_turn_end()
     if debug: print("-".join(sequence))
     return total
+
+def n_meur_rotation(unit : Unit, enemy : Enemy, debug : bool = False, passive_frequency : float = -1, below_50 : bool = False, start_nails : int = 0):
+    sequence = [None for _ in range(6)]
+    bag = get_bag()
+
+    skills = {1 : unit.skill_1, 2 : unit.skill_2, 3 : unit.skill_3}
+    total = 0
+    unit.skill_1.set_conds([below_50])
+    enemy.apply_status("Nails", 0, 0)
+    enemy.statuses["Nails"].count = start_nails
+    do_passive : bool = False
+    unit.clear_statuses()
+    for i in range(6):
+        unit.on_turn_start()
+        enemy.on_turn_start()
+        dashboard = [bag[0], bag[1]]
+        a = max(dashboard)
+        b = min(dashboard)
+        decision = a
+       
+        do_passive = passive_frequency >= random()
+        if do_passive: unit.apply_status("Fanatic", 0, 1)
+        result = skills[decision].calculate_damage(unit, enemy, debug=debug, entry_effects=None if not do_passive else [backend.skc.BasePowerUp(1)])
+        total += result
+        
+        if debug: print(result)
+        sequence[i] = str(decision)
+        bag.remove(decision)
+
+        
+        
+        if len(bag) < 2:
+            bag += get_bag()
+        unit.on_turn_end()
+        enemy.on_turn_end()
+    if debug: print("-".join(sequence))
+    return total
