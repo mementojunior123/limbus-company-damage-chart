@@ -3491,3 +3491,36 @@ def bl_sinclair_rotation(unit : Unit, enemy : Enemy, debug : bool = False, start
     
     if debug: print("-".join(sequence))
     return total
+
+def mid_meur_rotation(unit : Unit, enemy : Enemy, debug : bool = False, mark : bool = False, passive_active : bool = False, res4 : bool = False, res6 : bool = False):
+    sequence = [None for _ in range(6)]
+    bag = get_bag()
+
+    skills = {1 : unit.skill_1, 2 : unit.skill_2, 3 : unit.skill_3}
+    total = 0
+    enemy.vengeance_mark = mark
+    if passive_active: unit.apply_unique_effect('passive', backend.skc.MidMeurPassive(), True)
+    unit.skill_3.set_conds([res4, res6])
+    for i in range(6):
+        enemy.on_turn_start()
+        dashboard = [bag[0], bag[1]]
+        a = max(dashboard)
+        b = min(dashboard)
+        decision = a
+       
+        
+        result = skills[decision].calculate_damage(unit, enemy, debug=debug)
+        total += result
+        
+        if debug: print(result)
+        sequence[i] = str(decision)
+        bag.remove(decision)
+
+        
+        
+        if len(bag) < 2:
+            bag += get_bag()
+        enemy.on_turn_end()
+    
+    if debug: print("-".join(sequence))
+    return total

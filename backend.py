@@ -1075,7 +1075,7 @@ class SkillEffectConstructors:
     
     @staticmethod
     def MidDonPassive():
-        return sk.new("MidDonPassive", None)
+        return SkillEffect('coin_power', 'add', 0, apply_func=SpecialSkillEffects.MidDonPassive)
     
     @staticmethod
     def CounterBasepowerGain():
@@ -1459,6 +1459,10 @@ class SkillEffectConstructors:
     @staticmethod
     def StopPoiseDrain(condition : 'AnySkillConditional' = -1):
         return SkillEffect('dynamic', 'add', 0, apply_func=SpecialSkillEffects.StopPoiseDrain, condition=condition)
+    
+    @staticmethod
+    def MidMeurPassive():
+        return SkillEffect('coin_power', 'add', 0, apply_func=SpecialSkillEffects.MidMeurPassive)
 
 def get_dlup_str():
     return f'unit.statuses.{StatusNames.defense_level_up}.count'
@@ -2739,6 +2743,13 @@ class SpecialSkillEffects:
         else:
             env.effects[self] = [0, -1]
     
+    def MidMeurPassive(self : SkillEffect, env : Environment):
+        if getattr(env.enemy, 'vengeance_mark', False):
+            env.base += 1
+            env.effects[self] = [1, -1]
+        else:
+            env.effects[self] = [0, -1]
+    
     def ResetAttackWeight(self : SkillEffect, env : Environment):
         env.effects[self] = [self.value, -1]
         env.unit.atk_weight = self.value
@@ -3376,6 +3387,12 @@ class SkillConditionals:
     @staticmethod
     def HasEgoHeadsHit(self : SkillEffect, env : Environment, data = None) -> bool:
         if getattr(env.unit, 'ego', False) and env.sequence[env.current_coin_index] == "Heads":
+            return True
+        return False
+    
+    @staticmethod
+    def HasMark(self : SkillEffect, env : Environment, data = None) -> bool:
+        if getattr(env.enemy, 'vengeance_mark', False):
             return True
         return False
     
@@ -4544,7 +4561,12 @@ skc.GainTremor(3, 0)]),
 "Slash Series" : Skill((6, 2, 3), 2, "Slash Series", ("Slash", "Wrath"), [[skc.OnHit(skc.GainPoise(2))], [skc.OnHit(skc.GainPoise(1))], [skc.OnHit(skc.GainPoise(1))]],
 [skc.StopPoiseDrain(0)]),
 "To Claim Their Bones" : Skill((8, 18, 1), 2, "To Claim Their Bones", ("Slash", "Pride"), 
-[[skc.OnCritRoll(skc.AddXForEachY(1.5, 'dynamic', 10, 'unit.poise_count', 0, 1.5)), skc.DynamicBonus(0.2, 0)]])
+[[skc.OnCritRoll(skc.AddXForEachY(1.5, 'dynamic', 10, 'unit.poise_count', 0, 1.5)), skc.DynamicBonus(0.2, 0)]]),
+
+"We Remember" : Skill((3, 4, 2), 1, "We Remember", ("Blunt", "Sloth"), [[], []]),
+"Chains of Loyalty" : Skill((4, 5, 2), 1, "Chains of Loyalty", ("Blunt", "Envy"), [[], []]),
+"Recording" : Skill((4, 3, 3), 3, "Recording", ("Blunt", "Wrath"), 
+[[], [], [skc.OnHit(skc.ApplyStatusCountNextTurn(StatusNames.envy_fragile, 2, SkillConditionals.HasMark))]], [skc.CoinPower(1, i) for i in range(2)])
 }
 ENEMIES = {
     "Test" : Enemy(40, 100, {}, {}),
@@ -4667,5 +4689,6 @@ UNITS = {
     "Bush Sang" : Unit("Bush Sang", (gs("Sprouting Bud"), gs("Moment's Floral Breeze"), gs("Bloodsteeped Scent"))),
     "N Meur" : Unit("N Meur", (gs("Drive"), gs("You Are Cleansed of Sin"), gs("Annihilate Heretics"))),
     "N Rodya" : Unit("N Rodya", (gs("Devoted Hammering"), gs("Zealous Purge"), gs("Ironclad Retribution"))),
-    "Bl Sinclair" : Unit("Bl Sinclair", (gs("Slice then Stab"), gs("Slash Series"), gs("To Claim Their Bones")))
+    "Bl Sinclair" : Unit("Bl Sinclair", (gs("Slice then Stab"), gs("Slash Series"), gs("To Claim Their Bones"))),
+    "Mid Meur" : Unit("Mid Meur", (gs("We Remember"), gs("Chains of Loyalty"), gs("Recording")))
     }
