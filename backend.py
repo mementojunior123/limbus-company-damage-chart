@@ -76,13 +76,13 @@ class Enemy:
                 phys_res[val] = 1
         
         
-        self.phys_res = phys_res
+        self.phys_res : dict[str, float] = phys_res
         for val in ["Wrath", "Lust", "Sloth", "Gluttony", "Gloom", "Pride", "Envy"]:
             if not val in sin_res:
                 sin_res[val] = 1
             
         
-        self.sin_res = sin_res
+        self.sin_res : dict[str, float] = sin_res
         self.og_res = {"sin" : self.sin_res.copy(), "phys" : self.phys_res.copy()}
         self.og_tresholds = stagger_tresholds.copy()
         self.stagger_tresholds = stagger_tresholds
@@ -243,13 +243,14 @@ class Skill:
             print("skill was not found")
             return None
 
-    def __init__(self, basic_data, ol, name, type, coins, conditions = None, tags : list[str]|None = None, skill_type : Any = None) -> None:
-        self.base = basic_data[0]
-        self.coin_power = basic_data[1]
-        self.coin_amount = basic_data[2]
-        self.ol = ol
-        self.name = name
-        self.type = type
+    def __init__(self, basic_data : tuple[int, int, int], ol : int, name : str, type : tuple[str, str], coins : list[list['SkillEffect']], 
+                 conditions : list['AnySkillConditional'] = None, tags : list[str]|None = None, skill_type : Any = None) -> None:
+        self.base : int = basic_data[0]
+        self.coin_power : int = basic_data[1]
+        self.coin_amount : int = basic_data[2]
+        self.ol : int = ol
+        self.name : str = name
+        self.type : tuple[str, str] = type
         self.tags : list[str] = [] if tags is None else tags
         self.coins : list[list[SkillEffect]] = coins
 
@@ -1431,9 +1432,7 @@ class SkillEffectConstructors:
     
     @staticmethod
     def SpicebushS3Bonus():
-        effect = SkillEffect('dynamic', 'add', 0, apply_func=SpecialSkillEffects.SpicebushS3Bonus)
-        effect.apply = SpecialSkillEffects.SpicebushS3Bonus
-        return effect
+        return SkillEffect('dynamic', 'add', 0, apply_func=SpecialSkillEffects.SpicebushS3Bonus)
     
     @staticmethod
     def SpiceBushSinkingDeluge():
@@ -1463,7 +1462,38 @@ class SkillEffectConstructors:
     @staticmethod
     def MidMeurPassive():
         return SkillEffect('coin_power', 'add', 0, apply_func=SpecialSkillEffects.MidMeurPassive)
+    
+    @staticmethod
+    def WeaknessAnalyzed(condition : 'AnySkillConditional' = -1):
+        effect = SkillEffect('dynamic', 'add', 0, apply_func=SpecialSkillEffects.WeaknessAnalyzed, condition=condition)
+        effect.on_skill_end = SpecialSkillEffects.WeaknessAnalyzedCleanup
+        return effect
+    
+    @staticmethod
+    def SevenOutisS3Bonus():
+        return SkillEffect('dynamic', 'add', 0, apply_func=SpecialSkillEffects.SevenOutisS3Bonus)
+    
+    @staticmethod
+    def SevenOutisPassive():
+        return SkillEffect('dynamic', 'add', 0.1, condition=SkillConditionals.EnemyPhysResWeakOrFatal)
+    
+    @staticmethod
+    def TremorDecay(potency : int, status_effect : 'StatusEffect'):
+        effect = SkillEffect('def_level_mod', 'add', potency)
+        effect.special_data = status_effect
+        effect.apply = SpecialSkillEffects.apply_nothing_wduration
+        effect.early_update = SpecialSkillEffects.TremorDecayEarlyUpdate
+        effect.megalate_update = SpecialSkillEffects.TremorDecayCleanup
+        return effect
+    
+    @staticmethod
+    def TremorDecayConversion():
+        return SkillEffect('dynamic', 'add', 0, apply_func=SpecialSkillEffects.TremorDecayConversion, condition=SkillConditionals.TremorSumAbove20)
 
+    @staticmethod
+    def OufiHeathcliffPassive():
+        return SkillEffectConstructors.DAddXForEachY(0.1, 'dynamic', 6, 'enemy.statuses.Tremor.potency', 0, 0.3)
+    
 def get_dlup_str():
     return f'unit.statuses.{StatusNames.defense_level_up}.count'
 
@@ -3373,6 +3403,39 @@ class SpecialSkillEffects:
     def StopPoiseDrain(self : SkillEffect, env : Environment):
         env.CONSUME_POISE = False
         env.effects[self] = [0, -1]
+    
+    def WeaknessAnalyzed(self : SkillEffect, env : Environment):
+        chosen_type : str = ['Slash', 'Blunt', 'Pierce'][randint(0, 2)]
+        env.enemy.phys_res[chosen_type] += 0.2
+        env.effects[self] = [chosen_type, -1]
+    
+    def WeaknessAnalyzedCleanup(self : SkillEffect, env : Environment):
+        chosen_type : str = env.effects[self][0]
+        env.enemy.phys_res[chosen_type] -= 0.2
+    
+    def SevenOutisS3Bonus(self : SkillEffect, env : Environment):
+        mult : float = 0.15
+        bonus : int = floor(env.current_damage * mult * env.enemy.phys_res['Slash'])
+        env.enemy.take_damage(bonus, env)
+        env.total += bonus
+        env.effects[self] = [bonus, -1]
+
+    def TremorDecayEarlyUpdate(self : SkillEffect, env : Environment):
+        tremor : StatusEffect = self.special_data
+        self.value = tremor.potency
+        if self.value <= 0: env.effects[self][0] = 0; return
+        def_mod : int = tremor.potency // 4 if getattr(env.enemy, 'tremor_decay', False) else 0
+        env.effects[self][0] = def_mod
+        env.def_level_mod -= def_mod
+    
+    def TremorDecayCleanup(self : SkillEffect, env : Environment):
+        def_mod : int = env.effects[self][0]
+        env.effects[self][0] = 0
+        env.def_level_mod += def_mod
+
+    def TremorDecayConversion(self : SkillEffect, env : Environment):
+        env.enemy.tremor_decay = True
+        env.effects[self] = [0, -1]
 
 SkillConditional = Callable[[SkillEffect, Environment], bool]
 AnySkillConditional = Union[int, SkillConditional]
@@ -3417,6 +3480,16 @@ class SkillConditionals:
     @staticmethod
     def HasDefensiveStance(self : SkillEffect, env : Environment, data = None) -> bool:
         return True if getattr(env.unit, 'defense_stance', 0) else False
+    
+    @staticmethod
+    def EnemyPhysResWeakOrFatal(self : SkillEffect, env : Environment, data = None) -> bool:
+        return True if env.enemy.phys_res[env.skill.type[0]] > 1 else False
+    
+    @staticmethod
+    def TremorSumAbove20(self : SkillEffect, env : Environment, data = None) -> bool:
+        if not env.enemy.has_status('Tremor'): return False
+        the_tremor : StatusEffect = env.enemy.statuses['Tremor']
+        return (the_tremor.potency + the_tremor.count >= 20)
 
 GetterMethod = Callable[[SkillEffect, Environment], float|int|Any]
 SetterMethod = Callable[[SkillEffect, Environment, float|int|Any], None]
@@ -3452,6 +3525,7 @@ class StatusNames:
     rpm = red_plum_blossom
     dark_flame = "Dark Flame"
     BM = 'BM'
+    weakness_analyzed = 'Weakness Analyzed'
 
     slash_fragile = "Slash Fragility"
     blunt_fragile = "Blunt Fragility"
@@ -3482,6 +3556,7 @@ class StatusEffect:
                 new_effect.on_hit = SpecialStatusEffects.drain_count
             case 'Tremor':
                 new_effect.on_turn_end = SpecialStatusEffects.drain_count
+                new_effect.on_skill_start = SpecialStatusEffects.apply_tremor
             case 'Rupture':
                 new_effect.on_hit = SpecialStatusEffects.rupture_when_hit
             case 'Bleed':
@@ -3533,6 +3608,11 @@ class StatusEffect:
                 new_effect._max_count = 3
                 new_effect.on_skill_start = SpecialStatusEffects.apply_manors
                 new_effect.on_turn_end = SpecialStatusEffects.drain_count
+            case StatusNames.weakness_analyzed:
+                new_effect._has_potency = False
+                new_effect._max_count = 1
+                new_effect.on_skill_start = SpecialStatusEffects.apply_weakness_analyzed
+                new_effect.on_turn_end = SpecialStatusEffects.consume_all
             case 'Charge Barrier':
                 new_effect._has_potency = False
                 new_effect.on_turn_end = SpecialStatusEffects.charge_barrier_turn_end            
@@ -3734,7 +3814,12 @@ class SpecialStatusEffects:
         new_effect = skc.EchoesOfTheManor()
         env.apply_queue.append(new_effect)
         
-    
+    @staticmethod
+    def apply_weakness_analyzed(self : 'StatusEffect', env : Environment, is_defending : bool = True):
+        if not is_defending: return
+        new_effect = skc.WeaknessAnalyzed()
+        env.apply_queue.append(new_effect)
+        
     @staticmethod
     def add_sinking(self : StatusEffect, potency : int, count : int):
         self.potency += potency
@@ -3825,16 +3910,21 @@ class SpecialStatusEffects:
     
     @staticmethod
     def apply_blossom(self : 'StatusEffect', env : Environment, is_defending : bool = True):
-        if is_defending: return
+        if not is_defending: return
         new_effect = skc.RedPlumBlossom(self.count, self)
         env.apply_queue.append(new_effect)
     
     @staticmethod
     def apply_dark_flame(self : 'StatusEffect', env : Environment, is_defending : bool = True):
-        if is_defending: return
+        if not is_defending: return
         new_effect = skc.DefenseLevelDown(self.count)
         env.apply_queue.append(new_effect)
 
+    @staticmethod
+    def apply_tremor(self : 'StatusEffect', env : Environment, is_defending : bool = True):
+        if not is_defending: return
+        new_effect = skc.TremorDecay(self.count, self)
+        env.apply_queue.append(new_effect)
 
 
 class DamageTypes:
@@ -4566,7 +4656,21 @@ skc.GainTremor(3, 0)]),
 "We Remember" : Skill((3, 4, 2), 1, "We Remember", ("Blunt", "Sloth"), [[], []]),
 "Chains of Loyalty" : Skill((4, 5, 2), 1, "Chains of Loyalty", ("Blunt", "Envy"), [[], []]),
 "Recording" : Skill((4, 3, 3), 3, "Recording", ("Blunt", "Wrath"), 
-[[], [], [skc.OnHit(skc.ApplyStatusCountNextTurn(StatusNames.envy_fragile, 2, SkillConditionals.HasMark))]], [skc.CoinPower(1, i) for i in range(2)])
+[[], [], [skc.OnHit(skc.ApplyStatusCountNextTurn(StatusNames.envy_fragile, 2, SkillConditionals.HasMark))]], [skc.CoinPower(1, i) for i in range(2)]),
+
+"Predictive Analysis" : Skill((6, 4, 1), 0, "Predictive Analysis", ("Blunt", "Gluttony"), [[skc.OnHit(skc.ApplyStatus('Rupture', 1))]]),
+"Field Command" : Skill((5, 5, 2), 0, "Field Command", ("Slash", "Sloth"), 
+[[skc.OnHit(skc.ApplyStatusCount('Rupture', i + 1)), skc.OnHit(skc.ApplyStatusCountNextTurn(StatusNames.defense_level_down, 2))] for i in range(2)]),
+"Exploit the Gap" : Skill((6, 2, 3), 0, "Exploit the Gap", ("Blunt", "Lust"), 
+[[], [], [skc.OnHit(skc.SevenOutisS3Bonus()), skc.OnHit(skc.ApplyStatusCountNextTurn(StatusNames.weakness_analyzed, 1))]],
+[skc.DAddXForEachY(2, 'coin_power', 7, 'enemy.statuses.Rupture.potency', 0, 2)]),
+
+"Execution Advised" : Skill((3, 4, 2), 2, "Execution Advised", ("Slash", "Envy"), [[], [skc.OnHit(skc.ApplyStatusCount('Tremor', 2))]],
+[skc.DAddXForEachY(1, 'coin_power', 3, 'enemy.statuses.Tremor.potency', 0, 2)]),
+"Final Warning" : Skill((4, 6, 2), 2, "Final Warning", ("Slash", "Gloom"), [[skc.OnHit(skc.ApplyStatus('Tremor', 2))], [skc.OnHit(skc.ApplyStatus('Tremor', 2))]],
+[skc.DAddXForEachY(1, 'coin_power', 6, 'enemy.statuses.Tremor.potency', 0, 2)]),
+"Execution Sentencing" : Skill((5, 4, 3), 2, "Execution Sentencing", ("Slash", "Pride"), 
+[[skc.OnHit(skc.ApplyStatus('Tremor', 1))], [skc.OnHit(skc.ApplyStatus('Tremor', 1))], [skc.OnHit(skc.TremorDecayConversion())]])
 }
 ENEMIES = {
     "Test" : Enemy(40, 100, {}, {}),
@@ -4690,5 +4794,7 @@ UNITS = {
     "N Meur" : Unit("N Meur", (gs("Drive"), gs("You Are Cleansed of Sin"), gs("Annihilate Heretics"))),
     "N Rodya" : Unit("N Rodya", (gs("Devoted Hammering"), gs("Zealous Purge"), gs("Ironclad Retribution"))),
     "Bl Sinclair" : Unit("Bl Sinclair", (gs("Slice then Stab"), gs("Slash Series"), gs("To Claim Their Bones"))),
-    "Mid Meur" : Unit("Mid Meur", (gs("We Remember"), gs("Chains of Loyalty"), gs("Recording")))
+    "Mid Meur" : Unit("Mid Meur", (gs("We Remember"), gs("Chains of Loyalty"), gs("Recording"))),
+    "7 Outis" : Unit("7 Outis", (gs("Predictive Analysis"), gs("Field Command"), gs("Exploit the Gap"))),
+    "Oufi Heath" : Unit("Oufi Heath", (gs("Execution Advised"), gs("Final Warning"), gs("Execution Sentencing"))),
     }

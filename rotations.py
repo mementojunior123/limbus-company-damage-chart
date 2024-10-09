@@ -3524,3 +3524,68 @@ def mid_meur_rotation(unit : Unit, enemy : Enemy, debug : bool = False, mark : b
     
     if debug: print("-".join(sequence))
     return total
+
+def seven_outis_rotation(unit : Unit, enemy : Enemy, debug : bool = False, start_rupture : tuple[int, int] = (0,0), passive_frequency : float = -1):
+    sequence = [None for _ in range(6)]
+    bag = get_bag()
+
+    skills = {1 : unit.skill_1, 2 : unit.skill_2, 3 : unit.skill_3}
+    total = 0
+    enemy.apply_status(backend.StatusNames.rupture, 0,0)
+    rupture_status : backend.StatusEffect = enemy.statuses.get(backend.StatusNames.rupture)
+    rupture_status.potency, rupture_status.count = start_rupture
+    for i in range(6):
+        dashboard = [bag[0], bag[1]]
+        a = max(dashboard)
+        b = min(dashboard)
+        decision = a
+       
+        
+        result = skills[decision].calculate_damage(unit, enemy, debug=debug, entry_effects=None if passive_frequency < random() else [backend.skc.SevenOutisPassive()])
+        total += result
+        
+        if debug: print(result)
+        sequence[i] = str(decision)
+        bag.remove(decision)
+
+        
+        
+        if len(bag) < 2:
+            bag += get_bag()
+    
+    if debug: print("-".join(sequence))
+    return total
+
+def oufi_heathcliff_rotation(unit : Unit, enemy : Enemy, debug : bool = False, start_tremor : tuple[int, int] = (0,0), passive_active : bool = False, decay : bool = False):
+    sequence = [None for _ in range(6)]
+    bag = get_bag()
+
+    skills = {1 : unit.skill_1, 2 : unit.skill_2, 3 : unit.skill_3}
+    total = 0
+    if passive_active: unit.apply_unique_effect('passive', backend.skc.OufiHeathcliffPassive(), True)
+    enemy.apply_status(backend.StatusNames.tremor, 0,0)
+    tremor_status : backend.StatusEffect = enemy.statuses.get(backend.StatusNames.tremor)
+    tremor_status.potency, tremor_status.count = start_tremor
+    enemy.tremor_decay = decay
+    for i in range(6):
+        enemy.on_turn_start()
+        dashboard = [bag[0], bag[1]]
+        a = max(dashboard)
+        b = min(dashboard)
+        decision = a
+       
+        
+        result = skills[decision].calculate_damage(unit, enemy, debug=debug)
+        total += result
+        
+        if debug: print(result)
+        sequence[i] = str(decision)
+        bag.remove(decision)
+
+        
+        
+        if len(bag) < 2:
+            bag += get_bag()
+        enemy.on_turn_end()
+    if debug: print("-".join(sequence))
+    return total
