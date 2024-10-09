@@ -3417,3 +3417,77 @@ def n_meur_rotation(unit : Unit, enemy : Enemy, debug : bool = False, passive_fr
         enemy.on_turn_end()
     if debug: print("-".join(sequence))
     return total
+
+
+def n_rodya_rotation(unit : Unit, enemy : Enemy, debug : bool = False, start_nails : int = 0, ncorp_allies : int = 0):
+    sequence = [None for _ in range(6)]
+    bag = get_bag()
+
+    skills = {1 : unit.skill_1, 2 : unit.skill_2, 3 : unit.skill_3}
+    total = 0
+    enemy.apply_status("Nails", 0, 0)
+    enemy.statuses["Nails"].count = start_nails
+    unit.clear_statuses()
+    unit.apply_status("Fanatic", 0, 0)
+    unit.ncorp_allies = ncorp_allies
+    for i in range(6):
+        unit.on_turn_start()
+        enemy.on_turn_start()
+        dashboard = [bag[0], bag[1]]
+        a = max(dashboard)
+        b = min(dashboard)
+        decision = a
+       
+        result = skills[decision].calculate_damage(unit, enemy, debug=debug)
+        total += result
+        
+        if debug: print(result)
+        sequence[i] = str(decision)
+        bag.remove(decision)
+
+        
+        
+        if len(bag) < 2:
+            bag += get_bag()
+        unit.on_turn_end()
+        enemy.on_turn_end()
+    if debug: print("-".join(sequence))
+    return total
+
+
+def bl_sinclair_rotation(unit : Unit, enemy : Enemy, debug : bool = False, start_poise : tuple[int, int] = (0,0), passive_poise : int = 0, bl_meur : int = 0):
+    sequence = [None for _ in range(6)]
+    bag = get_bag()
+
+    skills = {1 : unit.skill_1, 2 : unit.skill_2, 3 : unit.skill_3}
+    total = 0
+    unit.set_poise(*start_poise)
+    if bl_meur:
+        unit.apply_unique_effect('homeland', backend.skc.SwordplayOfTheHomeland(), True)
+    unit.skill_2.set_conds([True])
+    for i in range(6):
+        if bl_meur: unit.add_poise(bl_meur, bl_meur)
+        dashboard = [bag[0], bag[1]]
+        a = max(dashboard)
+        b = min(dashboard)
+        decision = a
+       
+        if passive_poise: 
+            unit.add_poise(0, passive_poise)
+        unit.skill_3.set_conds([bool(passive_poise)])
+        result = skills[decision].calculate_damage(unit, enemy, debug=debug)
+        total += result
+        
+        if debug: print(f'{result}(poise = ({unit.poise_potency}, {unit.poise_count}))')
+        sequence[i] = str(decision)
+        bag.remove(decision)
+
+        
+        
+        if len(bag) < 2:
+            bag += get_bag()
+        
+        unit.consume_poise()
+    
+    if debug: print("-".join(sequence))
+    return total

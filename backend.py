@@ -365,7 +365,7 @@ class Skill:
                 did_crit = False
             elif self.crits[i] is True:
                 did_crit = True
-                owner.consume_poise(1)
+                if env.CONSUME_POISE: owner.consume_poise(1)
             
             elif self.crits[i] is False:
                 did_crit = False
@@ -374,7 +374,7 @@ class Skill:
                 crit_odds = (owner.poise_potency * 0.05 * env.crit_odds_mult) + env.crit_odds_bonus
                 if crit_odds > random():
                     did_crit = True
-                    owner.consume_poise(1)
+                    if env.CONSUME_POISE: owner.consume_poise(1)
                 else:
                     did_crit = False
 
@@ -688,6 +688,7 @@ class Environment:
         self.updating_queue : bool = False
         self.global_state : dict[str, Any] = {}
         self.CONSUME_RUPTURE : bool = True
+        self.CONSUME_POISE : bool = True
     
     @property
     def def_level(self) -> int:
@@ -1454,6 +1455,10 @@ class SkillEffectConstructors:
         effect.early_update = SpecialSkillEffects.FanaticEarlyUpdate
         effect.megalate_update = SpecialSkillEffects.FanaticCleanup
         return effect
+
+    @staticmethod
+    def StopPoiseDrain(condition : 'AnySkillConditional' = -1):
+        return SkillEffect('dynamic', 'add', 0, apply_func=SpecialSkillEffects.StopPoiseDrain, condition=condition)
 
 def get_dlup_str():
     return f'unit.statuses.{StatusNames.defense_level_up}.count'
@@ -3328,6 +3333,7 @@ class SpecialSkillEffects:
         env.enemy.take_damage(bonus, env)
         env.total += bonus
         env.effects[self] = [bonus, -1]
+    
     def SpiceBushSinkingDeluge(self : SkillEffect, env : Environment):
         if not env.enemy.has_status('Sinking'): return
         the_sinking : StatusEffect = env.enemy.statuses['Sinking']
@@ -3352,6 +3358,10 @@ class SpecialSkillEffects:
         if getattr(env.unit, 'passive', False):
             if env.unit.max_aoe > 1:
                 env.dynamic += 0.3
+
+    def StopPoiseDrain(self : SkillEffect, env : Environment):
+        env.CONSUME_POISE = False
+        env.effects[self] = [0, -1]
 
 SkillConditional = Callable[[SkillEffect, Environment], bool]
 AnySkillConditional = Union[int, SkillConditional]
@@ -4522,6 +4532,19 @@ skc.GainTremor(3, 0)]),
 "You Are Cleansed of Sin" : Skill((6, 3, 2), 0, "You Are Cleansed of Sin", ("Blunt", "Wrath"), [[skc.OnHit(skc.ApplyStatusCount("Nails", 3))], []]),
 "Annihilate Heretics" : Skill((8, 3, 2), 0, "Annihilate Heretics", ("Pierce", "Pride"), [[skc.OnHit(skc.ApplyStatusCount("Nails", 2))], []]),
 
+"Devoted Hammering" : Skill((3, 4, 2), 3, "Devoted Hammering", ("Pierce", "Pride"), 
+[[skc.OnHit(skc.AddStatusCountForEachY(1, "Nails", 1, 'enemy.statuses.Nails.count'))] for _ in range(2)]),
+"Zealous Purge" : Skill((6, 2, 2), 3, "Zealous Purge", ("Blunt", "Lust"), [[skc.OnHit(skc.ApplyStatusCountNextTurn("Nails", 1))], []],
+[skc.GainStatusNextTurn("Fanatic", 0, 1, 0)]),
+"Ironclad Retribution" : Skill((4, 2, 4), 3, "Ironclad Retribution", ("Blunt", "Wrath"), [[] for _ in range(4)],
+[skc.AddXForEachY(0.15, 'dynamic', 1, 'unit.statuses.Fanatic.count', 0, 0.15), skc.AddXForEachY(0.05, 'dynamic', 1, 'unit.ncorp_allies', 0, 0.3)]),
+
+"Slice then Stab" : Skill((5, 2, 2), 2, "Slice then Stab", ("Pierce", "Gluttony"), [[], [skc.OnHit(skc.GainPoiseCount(2))]], 
+[skc.DAddXForEachY(1, 'coin_power', 3, 'unit.poise_count')]),
+"Slash Series" : Skill((6, 2, 3), 2, "Slash Series", ("Slash", "Wrath"), [[skc.OnHit(skc.GainPoise(2))], [skc.OnHit(skc.GainPoise(1))], [skc.OnHit(skc.GainPoise(1))]],
+[skc.StopPoiseDrain(0)]),
+"To Claim Their Bones" : Skill((8, 18, 1), 2, "To Claim Their Bones", ("Slash", "Pride"), 
+[[skc.OnCritRoll(skc.AddXForEachY(1.5, 'dynamic', 10, 'unit.poise_count', 0, 1.5)), skc.DynamicBonus(0.2, 0)]])
 }
 ENEMIES = {
     "Test" : Enemy(40, 100, {}, {}),
@@ -4642,5 +4665,7 @@ UNITS = {
     "Zwei Ish" : Unit("Zwei Ish", (gs("Zwei Knight's Greatsword Form"), gs("Can't Let You Through."), gs("Ward"))),
     "Deici Sang" : Unit("Deici Sang", (gs("Expend Knowledge"), gs("Seal Shut"), gs("Grace of Knowledge"))),
     "Bush Sang" : Unit("Bush Sang", (gs("Sprouting Bud"), gs("Moment's Floral Breeze"), gs("Bloodsteeped Scent"))),
-    "N Meur" : Unit("N Meur", (gs("Drive"), gs("You Are Cleansed of Sin"), gs("Annihilate Heretics")))
+    "N Meur" : Unit("N Meur", (gs("Drive"), gs("You Are Cleansed of Sin"), gs("Annihilate Heretics"))),
+    "N Rodya" : Unit("N Rodya", (gs("Devoted Hammering"), gs("Zealous Purge"), gs("Ironclad Retribution"))),
+    "Bl Sinclair" : Unit("Bl Sinclair", (gs("Slice then Stab"), gs("Slash Series"), gs("To Claim Their Bones")))
     }
