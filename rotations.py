@@ -3589,3 +3589,42 @@ def oufi_heathcliff_rotation(unit : Unit, enemy : Enemy, debug : bool = False, s
         enemy.on_turn_end()
     if debug: print("-".join(sequence))
     return total
+
+def zwei_sinclair_west_rotation(unit : Unit, enemy : Enemy, debug : bool = False, tremor : int = 0, dl_up : int = 0, passive_active : bool = False):
+    sequence = [None for _ in range(6)]
+    bag = get_bag()
+
+    skills = {1 : unit.skill_1, 2 : unit.skill_2, 3 : unit.skill_3}
+    total = 0
+    unit.tremor = tremor
+    unit.apply_status(backend.StatusNames.defense_level_up, 0, 0)
+    the_dl_up : backend.StatusEffect = unit.statuses[backend.StatusNames.defense_level_up]
+    the_dl_up.count = dl_up
+    unit.skill_2.set_conds([True])
+    unit.skill_1.set_conds([True])
+    for i in range(6):
+        unit.on_turn_start()
+        if passive_active:
+            bonus_dl : int = backend.clamp(unit.tremor, 0, 5)
+            the_dl_up.count += bonus_dl
+        dashboard = [bag[0], bag[1]]
+        a = max(dashboard)
+        b = min(dashboard)
+        decision = a
+
+        result = skills[decision].calculate_damage(unit, enemy, debug=debug)
+        total += result
+
+        
+        if debug: print(result)
+        sequence[i] = str(decision)
+        bag.remove(decision)
+
+        
+        
+        if len(bag) < 2:
+            bag += get_bag()
+        if unit.tremor > 0: unit.tremor -= 1
+        unit.on_turn_end()
+    if debug: print("-".join(sequence))
+    return total

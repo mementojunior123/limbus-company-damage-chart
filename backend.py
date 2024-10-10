@@ -1494,6 +1494,10 @@ class SkillEffectConstructors:
     def OufiHeathcliffPassive():
         return SkillEffectConstructors.DAddXForEachY(0.1, 'dynamic', 6, 'enemy.statuses.Tremor.potency', 0, 0.3)
     
+    @staticmethod
+    def ZweiSinclairWestS3Tremor():
+        return SkillEffect('dynamic', 'add', 0, apply_func=SpecialSkillEffects.ZweiSinclairWestS3Tremor)
+    
 def get_dlup_str():
     return f'unit.statuses.{StatusNames.defense_level_up}.count'
 
@@ -3437,6 +3441,12 @@ class SpecialSkillEffects:
         env.enemy.tremor_decay = True
         env.effects[self] = [0, -1]
 
+    def ZweiSinclairWestS3Tremor(self : SkillEffect, env : Environment):
+        env.effects[self] = [0, -1]
+        if not hasattr(env.unit, 'tremor'): return
+        consumed : int = clamp(env.unit.tremor, 0, 8)
+        env.unit.tremor -= consumed
+
 SkillConditional = Callable[[SkillEffect, Environment], bool]
 AnySkillConditional = Union[int, SkillConditional]
 class SkillConditionals:
@@ -4670,7 +4680,14 @@ skc.GainTremor(3, 0)]),
 "Final Warning" : Skill((4, 6, 2), 2, "Final Warning", ("Slash", "Gloom"), [[skc.OnHit(skc.ApplyStatus('Tremor', 2))], [skc.OnHit(skc.ApplyStatus('Tremor', 2))]],
 [skc.DAddXForEachY(1, 'coin_power', 6, 'enemy.statuses.Tremor.potency', 0, 2)]),
 "Execution Sentencing" : Skill((5, 4, 3), 2, "Execution Sentencing", ("Slash", "Pride"), 
-[[skc.OnHit(skc.ApplyStatus('Tremor', 1))], [skc.OnHit(skc.ApplyStatus('Tremor', 1))], [skc.OnHit(skc.TremorDecayConversion())]])
+[[skc.OnHit(skc.ApplyStatus('Tremor', 1))], [skc.OnHit(skc.ApplyStatus('Tremor', 1))], [skc.OnHit(skc.TremorDecayConversion())]]),
+
+"Suppressing." : Skill((3, 4, 2), 0, "Suppressing.", ("Slash", "Lust"), [[], [skc.OnHit(skc.GainStatusNextTurn(StatusNames.defense_level_up, 0, 2))]],
+[skc.GainStatus(StatusNames.defense_level_up, 0, 2), skc.GainTremor(3, 0)]),
+"Combat Preparation" : Skill((4, 5, 2), 1, "Combat Preparation", ("Slash", "Gloom"), 
+[[], []], [skc.ZweiIshDlTremorConversion(3), skc.AddXForEachY(1, 'coin_power', 4, get_dlup_str()), skc.GainTremor(3, 0)]), #never the ally with lowest HP
+"Fence" : Skill((4, 3, 3), 2, "Fence", ("Blunt", "Sloth"), [[], [], [skc.OnHit(skc.ZweiSinclairWestS3Tremor())]], #never the ally with lowest HP either
+[skc.ZweiIshDlTremorConversion(99), skc.AddXForEachY(1, 'coin_power', 3, get_dlup_str(), 0, 3)])
 }
 ENEMIES = {
     "Test" : Enemy(40, 100, {}, {}),
@@ -4797,4 +4814,5 @@ UNITS = {
     "Mid Meur" : Unit("Mid Meur", (gs("We Remember"), gs("Chains of Loyalty"), gs("Recording"))),
     "7 Outis" : Unit("7 Outis", (gs("Predictive Analysis"), gs("Field Command"), gs("Exploit the Gap"))),
     "Oufi Heath" : Unit("Oufi Heath", (gs("Execution Advised"), gs("Final Warning"), gs("Execution Sentencing"))),
+    "Zwei Sinclair West" : Unit("Zwei Sinclair West", (gs("Suppressing."), gs("Combat Preparation"), gs("Fence")))
     }
