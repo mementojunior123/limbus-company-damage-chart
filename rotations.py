@@ -3628,3 +3628,63 @@ def zwei_sinclair_west_rotation(unit : Unit, enemy : Enemy, debug : bool = False
         unit.on_turn_end()
     if debug: print("-".join(sequence))
     return total
+
+def cinq_meur_rotation(unit : Unit, enemy : Enemy, debug : bool = False, 
+            start_poise : tuple[int, int] = (0,0), 
+            start_rupture : tuple[int, int] = (0,0),
+            unit_speed : tuple[int, int] = (4, 7), enemy_speed : tuple[int, int] = (2, 4), 
+            passive : bool = False, focusing : bool = True, start_focus : int = 0,):
+    sequence = [None for _ in range(6)]
+    bag = get_bag()
+
+    skills = {1 : unit.skill_1, 2 : unit.skill_2, 3 : unit.skill_3}
+    total = 0
+    unit.set_poise(*start_poise)
+    enemy.apply_status(backend.StatusNames.rupture, 0,0)
+    rupture_status : backend.StatusEffect = enemy.statuses.get(backend.StatusNames.rupture)
+    rupture_status.potency, rupture_status.count = start_rupture
+    enemy.meur_focus = start_focus
+    haste : int = 0
+    for i in range(6):
+        unit.on_turn_start()
+        unit.speed = randint(*unit_speed) + haste
+        enemy.speed = randint(*enemy_speed)
+        unit.rel_speed = unit.speed - enemy.speed
+        haste = 0
+        dashboard = [bag[0], bag[1]]
+        a = max(dashboard)
+        b = min(dashboard)
+        decision = a
+       
+        entry_effects : list[backend.SkillEffect]
+        if enemy.meur_focus <= 1:
+            entry_effects = [] 
+        elif enemy.meur_focus < 3:
+            entry_effects = [backend.skc.BasePowerUp(1)]
+        else:
+            entry_effects = [backend.skc.BasePowerUp(1), backend.skc.CoinPower(1)]
+        
+        print(f'Before attack : {rupture_status.potency}x{rupture_status.count} rupture, {enemy.meur_focus} focused attack')
+        result = skills[decision].calculate_damage(unit, enemy, debug=debug, entry_effects=entry_effects)
+        total += result
+        
+        if debug: print(result)
+        sequence[i] = str(decision)
+        bag.remove(decision)
+
+        
+        
+        if len(bag) < 2:
+            bag += get_bag()
+        
+        unit.consume_poise(1)
+        unit.on_turn_end()
+        if not focusing : enemy.meur_focus = 0
+        if passive:
+            haste += backend.clamp(unit.poise_potency // 3, 0, 2)
+            if enemy.meur_focus < 3: enemy.meur_focus += 1
+        else:
+            enemy.meur_focus = 0
+    
+    if debug: print("-".join(sequence))
+    return total

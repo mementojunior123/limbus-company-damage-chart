@@ -1498,6 +1498,10 @@ class SkillEffectConstructors:
     def ZweiSinclairWestS3Tremor():
         return SkillEffect('dynamic', 'add', 0, apply_func=SpecialSkillEffects.ZweiSinclairWestS3Tremor)
     
+    @staticmethod
+    def CinqMeurS3HeadsBonus():
+        return SkillEffect('dynamic', 'add', 0, apply_func=SpecialSkillEffects.CinqMeurS3HeadsBonus)
+    
 def get_dlup_str():
     return f'unit.statuses.{StatusNames.defense_level_up}.count'
 
@@ -3446,6 +3450,15 @@ class SpecialSkillEffects:
         if not hasattr(env.unit, 'tremor'): return
         consumed : int = clamp(env.unit.tremor, 0, 8)
         env.unit.tremor -= consumed
+    
+    def CinqMeurS3HeadsBonus(self : SkillEffect, env : Environment):
+        bonus : float = 0.0
+        if env.sequence[0] == 'Heads':
+            bonus += 0.10
+        if env.sequence[1] == 'Heads':
+            bonus += 0.10
+        env.dynamic += bonus
+        env.effects[self] = [bonus, -1]
 
 SkillConditional = Callable[[SkillEffect, Environment], bool]
 AnySkillConditional = Union[int, SkillConditional]
@@ -4687,7 +4700,24 @@ skc.GainTremor(3, 0)]),
 "Combat Preparation" : Skill((4, 5, 2), 1, "Combat Preparation", ("Slash", "Gloom"), 
 [[], []], [skc.ZweiIshDlTremorConversion(3), skc.AddXForEachY(1, 'coin_power', 4, get_dlup_str()), skc.GainTremor(3, 0)]), #never the ally with lowest HP
 "Fence" : Skill((4, 3, 3), 2, "Fence", ("Blunt", "Sloth"), [[], [], [skc.OnHit(skc.ZweiSinclairWestS3Tremor())]], #never the ally with lowest HP either
-[skc.ZweiIshDlTremorConversion(99), skc.AddXForEachY(1, 'coin_power', 3, get_dlup_str(), 0, 3)])
+[skc.ZweiIshDlTremorConversion(99), skc.AddXForEachY(1, 'coin_power', 3, get_dlup_str(), 0, 3)]),
+
+"Allez" : Skill((3, 4, 2), 2, "Allez", ("Pierce", "Pride"), [[skc.OnHit(skc.GainPoiseCount(1))], [skc.OnHit(skc.ApplyStatus('Rupture', 1), SkillConditionals.DevRodyaRuptureCondInverted), 
+skc.OnHit(skc.AddStatusPotForEachY(1, 'Rupture', 1, 'unit.rel_speed', 0, 3, condition=SkillConditionals.DevRodyaRuptureCondInverted))]], 
+[skc.DVRRuptureCondCheck(), skc.StopRuptureDrain(SkillConditionals.DevRodyaRuptureCond), skc.GainPoiseCount(2), 
+skc.AddXForEachY(1, 'coin_power', 3, 'unit.rel_speed', 0, 2)]),
+"Fente" : Skill((4, 4, 3), 2, "Fente", ("Pierce", "Gluttony"), 
+[[skc.OnHit(skc.GainPoiseCount(2))], [skc.OnHit(skc.GainPoise(2))],  #coins 1 and 2
+[skc.OnCritRoll(skc.DynamicBonus(0.2), SkillConditionals.DevRodyaRuptureCond),
+skc.OnCritRoll(skc.AddXForEachY(0.1, 'dynamic', 7, 'unit.speed', 0, 0.1), SkillConditionals.DevRodyaRuptureCond),
+skc.OnHit(skc.ApplyStatus('Rupture', 4), SkillConditionals.DevRodyaRuptureCondInverted), 
+skc.OnHit(skc.AddStatusCountForEachY(2, 'Rupture', 7, 'unit.speed', 0, 2), SkillConditionals.DevRodyaRuptureCondInverted)]],
+[skc.DVRRuptureCondCheck(), skc.StopRuptureDrain(SkillConditionals.DevRodyaRuptureCond), skc.GainPoiseCount(2, 0), skc.AddXForEachY(1, 'coin_power', 3, 'unit.rel_speed')]),
+"Salut" : Skill((5, 4, 3), 3, "Salut", ("Pierce", "Gloom"), [[], [], 
+[skc.AddXForEachY(0.2, 'dynamic', 1, 'enemy.meur_focus', 0, 0.6), skc.OnCritRoll(skc.DynamicBonus(0.3)), 
+skc.OnCritRoll(skc.AddXForEachY(0.02, 'dynamic', 1, 'enemy.statuses.Rupture.potency', 0, 0.3)), skc.CinqMeurS3HeadsBonus()]],
+[skc.DVRRuptureCondCheck(), skc.StopRuptureDrain(SkillConditionals.DevRodyaRuptureCond), skc.AddXForEachY(1, 'coin_power', 2, 'unit.rel_speed', 0, 3),
+skc.GainPoise(5, 0), skc.AddXForEachY(5, 'unit.poise_potency', 1, 'enemy.meur_focus', 0, 5, condition=0)])
 }
 ENEMIES = {
     "Test" : Enemy(40, 100, {}, {}),
@@ -4814,5 +4844,6 @@ UNITS = {
     "Mid Meur" : Unit("Mid Meur", (gs("We Remember"), gs("Chains of Loyalty"), gs("Recording"))),
     "7 Outis" : Unit("7 Outis", (gs("Predictive Analysis"), gs("Field Command"), gs("Exploit the Gap"))),
     "Oufi Heath" : Unit("Oufi Heath", (gs("Execution Advised"), gs("Final Warning"), gs("Execution Sentencing"))),
-    "Zwei Sinclair West" : Unit("Zwei Sinclair West", (gs("Suppressing."), gs("Combat Preparation"), gs("Fence")))
+    "Zwei Sinclair West" : Unit("Zwei Sinclair West", (gs("Suppressing."), gs("Combat Preparation"), gs("Fence"))),
+    "Cinq Meur" : Unit("Cinq Meur", (gs("Allez"), gs("Fente"), gs("Salut")))
     }
