@@ -773,6 +773,10 @@ class Environment:
 
 class SkillEffectConstructors:
     @staticmethod
+    def SetGlobal(name : str, value : Any, condition : 'AnySkillConditional' = -1):
+        return SkillEffect(name, 'set', value, condition=condition, apply_func=SpecialSkillEffects.set_global_state)
+
+    @staticmethod
     def DamageUp(value : int):
         return sk.new("DamageUp", value)
     
@@ -1510,6 +1514,14 @@ class SkillEffectConstructors:
     @staticmethod
     def CinqMeurS3HeadsBonus():
         return SkillEffect('dynamic', 'add', 0, apply_func=SpecialSkillEffects.CinqMeurS3HeadsBonus)
+    
+    @staticmethod
+    def TRodyaS3CoinPower():
+        return SkillEffect('dynamic', 'add', 0, apply_func=SpecialSkillEffects.TRodyaS3CoinPower)
+    
+    @staticmethod
+    def TRodyaMoratium():
+        return SkillEffect('dynamic', 'add', 0, apply_func=SpecialSkillEffects.TRodyaMoratium)
     
 def get_dlup_str():
     return f'unit.statuses.{StatusNames.defense_level_up}.count'
@@ -3469,6 +3481,19 @@ class SpecialSkillEffects:
         env.dynamic += bonus
         env.effects[self] = [bonus, -1]
 
+    def TRodyaS3CoinPower(self : SkillEffect, env : Environment):
+        env.effects[self] = [0, -1]
+        if env.unit.tremor >= 8:
+            env.global_state['ConsumedTremor'] = 1
+            env.coin_power += 1
+            env.unit.tremor -= 8
+        else:
+            env.global_state['ConsumedTremor'] = 0
+        
+    def TRodyaMoratium(self : SkillEffect, env : Environment):
+        if getattr('env.unit', 'borrowed_time', 0):
+            env.enemy.moratium = 2
+
 SkillConditional = Callable[[SkillEffect, Environment], bool]
 AnySkillConditional = Union[int, SkillConditional]
 class SkillConditionals:
@@ -4726,7 +4751,15 @@ skc.OnHit(skc.AddStatusCountForEachY(2, 'Rupture', 7, 'unit.speed', 0, 2), Skill
 [skc.AddXForEachY(0.2, 'dynamic', 1, 'enemy.meur_focus', 0, 0.6), skc.OnCritRoll(skc.DynamicBonus(0.3)), 
 skc.OnCritRoll(skc.AddXForEachY(0.02, 'dynamic', 1, 'enemy.statuses.Rupture.potency', 0, 0.3)), skc.CinqMeurS3HeadsBonus()]],
 [skc.DVRRuptureCondCheck(), skc.StopRuptureDrain(SkillConditionals.DevRodyaRuptureCond), skc.AddXForEachY(1, 'coin_power', 2, 'unit.rel_speed', 0, 3),
-skc.GainPoise(5, 0), skc.AddXForEachY(5, 'unit.poise_potency', 1, 'enemy.meur_focus', 0, 5, condition=0)])
+skc.GainPoise(5, 0), skc.AddXForEachY(5, 'unit.poise_potency', 1, 'enemy.meur_focus', 0, 5, condition=0)]),
+
+"Prepare to Collect" : Skill((3, 4, 2), 1, "Prepare to Collect", ("Blunt", "Envy"), [[], [skc.OnHit(skc.GainTremor(1))]], [skc.GainTremor(2)]),
+"T Corp. Martial Suppression" : Skill((4, 5, 2), 1, "T Corp. Martial Suppression", ("Blunt", "Wrath"), [[skc.OnHit(skc.GainTremor(2))], 
+[skc.OnHit(skc.ApplyStatusCountNextTurn('Bind', 1)), skc.OnHit(skc.AddStatusCountForEachY(1, 'Bind', 6, 'enemy.tremor', next_turn=True))]],
+[skc.GainTremor(2), skc.AddXForEachY(0.05, 'dynamic', 1, 'enemy.statuses.Bind.count', 0, 0.15)]),
+"Execute Collections" : Skill((2, 3, 4), 1, "Execute Collections", ("Blunt", "Sloth"), [[], [], [],
+[skc.OnHit(skc.ApplyStatusCountNextTurn('Bind', 1)), skc.OnHit(skc.AddStatusCountForEachY(2, 'Bind', 1, 'global_state.ConsumedTremor', 0, 2, next_turn=True)),
+skc.OnHit(skc.TRodyaMoratium())]], [skc.TRodyaS3CoinPower(), skc.AddXForEachY(0.05, 'dynamic', 1, 'enemy.statuses.Bind.count', 0, 0.2)])
 }
 ENEMIES = {
     "Test" : Enemy(40, 100, {}, {}),
@@ -4854,5 +4887,6 @@ UNITS = {
     "7 Outis" : Unit("7 Outis", (gs("Predictive Analysis"), gs("Field Command"), gs("Exploit the Gap"))),
     "Oufi Heath" : Unit("Oufi Heath", (gs("Execution Advised"), gs("Final Warning"), gs("Execution Sentencing"))),
     "Zwei Sinclair West" : Unit("Zwei Sinclair West", (gs("Suppressing."), gs("Combat Preparation"), gs("Fence"))),
-    "Cinq Meur" : Unit("Cinq Meur", (gs("Allez"), gs("Fente"), gs("Salut")))
+    "Cinq Meur" : Unit("Cinq Meur", (gs("Allez"), gs("Fente"), gs("Salut"))),
+    "T Rodya" : Unit("T Rodya", (gs("Prepare to Collect"), gs("T Corp. Martial Suppression"), gs("Execute Collections")))
     }
