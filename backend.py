@@ -1523,6 +1523,10 @@ class SkillEffectConstructors:
     def TRodyaMoratium():
         return SkillEffect('dynamic', 'add', 0, apply_func=SpecialSkillEffects.TRodyaMoratium)
     
+    @staticmethod
+    def TDonMoratium():
+        return SkillEffect('dynamic', 'add', 0, apply_func=SpecialSkillEffects.TDonMoratium)
+    
 def get_dlup_str():
     return f'unit.statuses.{StatusNames.defense_level_up}.count'
 
@@ -3491,8 +3495,18 @@ class SpecialSkillEffects:
             env.global_state['ConsumedTremor'] = 0
         
     def TRodyaMoratium(self : SkillEffect, env : Environment):
-        if getattr('env.unit', 'borrowed_time', 0):
+        if getattr(env.unit, 'borrowed_time', 0):
             env.enemy.moratium = 2
+        env.effects[self] = [0, -1]
+    
+    def TDonMoratium(self : SkillEffect, env : Environment):
+        if getattr(env.enemy, 'tremor', 0) >= 5:
+            env.enemy.moratium = 2
+            if getattr(env.unit, 'borrowed_time', 0):
+                env.enemy.tremor += 5
+            else:
+                env.enemy.tremor -= 5 
+        env.effects[self] = [0, -1]
 
 SkillConditional = Callable[[SkillEffect, Environment], bool]
 AnySkillConditional = Union[int, SkillConditional]
@@ -4759,7 +4773,13 @@ skc.GainPoise(5, 0), skc.AddXForEachY(5, 'unit.poise_potency', 1, 'enemy.meur_fo
 [skc.GainTremor(2), skc.AddXForEachY(0.05, 'dynamic', 1, 'enemy.statuses.Bind.count', 0, 0.15)]),
 "Execute Collections" : Skill((2, 3, 4), 1, "Execute Collections", ("Blunt", "Sloth"), [[], [], [],
 [skc.OnHit(skc.ApplyStatusCountNextTurn('Bind', 1)), skc.OnHit(skc.AddStatusCountForEachY(2, 'Bind', 1, 'global_state.ConsumedTremor', 0, 2, next_turn=True)),
-skc.OnHit(skc.TRodyaMoratium())]], [skc.TRodyaS3CoinPower(), skc.AddXForEachY(0.05, 'dynamic', 1, 'enemy.statuses.Bind.count', 0, 0.2)])
+skc.OnHit(skc.TRodyaMoratium())]], [skc.TRodyaS3CoinPower(), skc.AddXForEachY(0.05, 'dynamic', 1, 'enemy.statuses.Bind.count', 0, 0.2)]),
+
+"Let Us Prepare to Collect" : Skill((3, 4, 2), 0, "Let Us Prepare to Collect", ("Blunt", "Gluttony"), [[], []], [skc.GainTremor(2)]),
+"T Corp. Accelerated Amputator" : Skill((4, 4, 3), 0, "T Corp. Accelerated Amputator", ("Blunt", "Pride"),
+[[skc.OnHit(skc.AddXForEachY(2, 'unit.tremor', 1, 'enemy.tremor', 0, 6))], [], []], [skc.GainTremor(3)]),
+"I Command Thee, Halt!" : Skill((4, 3, 4), 0, "I Command Thee, Halt!", ("Blunt", "Sloth"), [[], [], [], [skc.OnHit(skc.TDonMoratium())]],
+[skc.ConsumeRessourceTrigger('unit.tremor', 10, 10, skc.CoinPower(2))])
 }
 ENEMIES = {
     "Test" : Enemy(40, 100, {}, {}),
@@ -4888,5 +4908,6 @@ UNITS = {
     "Oufi Heath" : Unit("Oufi Heath", (gs("Execution Advised"), gs("Final Warning"), gs("Execution Sentencing"))),
     "Zwei Sinclair West" : Unit("Zwei Sinclair West", (gs("Suppressing."), gs("Combat Preparation"), gs("Fence"))),
     "Cinq Meur" : Unit("Cinq Meur", (gs("Allez"), gs("Fente"), gs("Salut"))),
-    "T Rodya" : Unit("T Rodya", (gs("Prepare to Collect"), gs("T Corp. Martial Suppression"), gs("Execute Collections")))
+    "T Rodya" : Unit("T Rodya", (gs("Prepare to Collect"), gs("T Corp. Martial Suppression"), gs("Execute Collections"))),
+    "T Don" : Unit("T Don", (gs("Let Us Prepare to Collect"), gs("T Corp. Accelerated Amputator"), gs("I Command Thee, Halt!")))
     }

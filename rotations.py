@@ -3732,3 +3732,41 @@ def t_rodya_rotation(unit : Unit, enemy : Enemy, debug : bool = False, tremor : 
         enemy.on_turn_end()
     if debug: print("-".join(sequence))
     return total
+
+def t_don_rotation(unit : Unit, enemy : Enemy, debug : bool = False, tremor : int = 0, enemy_tremor : int = 0, start_mora : int = 0):
+    sequence = [None for _ in range(6)]
+    bag = get_bag()
+
+    skills = {1 : unit.skill_1, 2 : unit.skill_2, 3 : unit.skill_3}
+    total : int = 0
+    unit.tremor = tremor
+    enemy.tremor = enemy_tremor
+    enemy.moratium = start_mora
+    has_mora : bool = bool(start_mora)
+    for i in range(6):
+        dashboard = [bag[0], bag[1]]
+        a = max(dashboard)
+        b = min(dashboard)
+        decision = a
+
+        result : int = skills[decision].calculate_damage(unit, enemy, debug=debug)
+
+        if has_mora:
+            total += floor(result * 1.3 * enemy.sin_res['Sloth'])
+        else:
+            total += result
+        if enemy.moratium > 0: enemy.moratium -= 1
+        has_mora = bool(enemy.moratium)
+
+        
+        if debug: print(result)
+        sequence[i] = str(decision)
+        bag.remove(decision)
+
+        
+        
+        if len(bag) < 2:
+            bag += get_bag()
+        if unit.tremor > 0: unit.tremor -= 1
+    if debug: print("-".join(sequence))
+    return total

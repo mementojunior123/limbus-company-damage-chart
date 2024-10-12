@@ -13,20 +13,19 @@ get_unit = Unit.get_unit
 
 enemy = get_enemy("Test")
 
-unit = get_unit("T Rodya")
+unit = get_unit("T Don")
 unit.sp = 45
 
 total = 0
 count = 2000
 
 
-enemy_tremor : int = 6
+enemy_tremor : int = 10
 start_mora : int = 2
 
 unit_tremors : list[int] = [i * 5 for i in range(4)] + [99]
-start_bind : int = 0
 for unit_tremor in unit_tremors:
     for _ in range(count):
-        total += rotations.t_rodya_rotation(unit, enemy, False, unit_tremor, enemy_tremor, start_mora, start_bind)
+        total += rotations.t_don_rotation(unit, enemy, False, unit_tremor, enemy_tremor, start_mora)
     print(f'{unit.name} average : {total/count:0.0f}({unit_tremor = })')
     total = 0
