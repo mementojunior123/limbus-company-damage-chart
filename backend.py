@@ -47,6 +47,14 @@ class StatusDict(dict):
     def __getattr__(self, name: str) -> Any:
         return self[name]
 
+class AttrStrDict(dict):
+    def __getattr__(self, name: str) -> Any:
+        return self[name]
+    
+    def __setattr__(self, name: str, val: Any) -> Any:
+        self[name] = val
+
+
 class Enemy:
 
     @classmethod
@@ -68,7 +76,7 @@ class Enemy:
         self.part_broken : bool = False
         self.is_staggered : bool = False
         self.stagger_level : int = 0
-        self.statuses : StatusDict[str, StatusEffect] = StatusDict()
+        self.statuses : dict[str, StatusEffect] = StatusDict()
         self.next_turn_statuses : dict[str, list[int]] = {}
         
         for val in ["Slash", "Pierce", "Blunt"]:
@@ -460,7 +468,7 @@ class Unit:
         self.level : int = 40
         self.poise : dict[str, int] = {"Potency" : 0, "Count" : 0}
         self.next_turn_poise : dict[str, int] = {"Potency" : 0, "Count" : 0}
-        self.statuses : StatusDict[str, StatusEffect] = StatusDict()
+        self.statuses : dict[str, StatusEffect] = StatusDict()
         self.next_turn_statuses : dict[str, list[int]] = {}
     
     def clamp_sp(self):
@@ -687,7 +695,8 @@ class Environment:
         self.apply_queue : list[SkillEffect] = []
 
         self.updating_queue : bool = False
-        self.global_state : dict[str, Any] = {}
+        self.global_state : dict[str, int]
+        self.global_state = AttrStrDict()
         self.CONSUME_RUPTURE : bool = True
         self.CONSUME_POISE : bool = True
     
