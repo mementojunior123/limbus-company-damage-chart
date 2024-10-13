@@ -66,8 +66,9 @@ class Enemy:
             return None
 
     def __init__(self, def_level, hp, phys_res : dict, sin_res : dict, observation : int = 0, can_break : bool = False,
-                 stagger_tresholds : list[float]|None = None) -> None:
+                 stagger_tresholds : list[int]|None = None) -> None:
         if stagger_tresholds is None: stagger_tresholds = []
+        stagger_tresholds = sorted(stagger_tresholds, reverse=True)
         self.def_level = def_level
         self.hp = hp
         self.max_hp = hp
@@ -92,6 +93,7 @@ class Enemy:
         
         self.sin_res : dict[str, float] = sin_res
         self.og_res = {"sin" : self.sin_res.copy(), "phys" : self.phys_res.copy()}
+
         self.og_tresholds = stagger_tresholds.copy()
         self.stagger_tresholds = stagger_tresholds
     
@@ -116,6 +118,18 @@ class Enemy:
         if not status.is_active(): return False
         return True
 
+    def has_tremor_flavor(self, flavor_name : str):
+        if getattr(self, 'tremor_flavor', None) is None: return False
+        if self.tremor_flavor == flavor_name: return True
+        elif type(self.tremor_flavor) == list:
+            if flavor_name in self.tremor_flavor: return True
+        return False
+    
+    def process_tremor_flavors(self):
+        if getattr(self, 'tremor_flavor', None) is None: return
+        elif type(self.tremor_flavor) == list:
+            self.tremor_flavor = None 
+
     def hit(self, damage, env : 'Environment'):
         self.hp -= damage
         if self.hp <= 0:
@@ -129,6 +143,11 @@ class Enemy:
             effect = self.statuses[effect_name]
             if not effect.is_active(): continue
             effect.on_hit(effect, env)
+    
+    def raise_stagger_treshold(self, damage : int, env : 'Environment' = None):
+        if not self.stagger_tresholds: return
+        self.stagger_tresholds[0] += damage
+        self.update_stagger_level()
     
     def take_damage(self, damage : int, env : 'Environment'):
         self.hp -= damage
@@ -172,16 +191,17 @@ class Enemy:
         for effect_name in self.next_turn_statuses:
             self.apply_status(effect_name, self.next_turn_statuses[effect_name][0], self.next_turn_statuses[effect_name][1])
         self.next_turn_statuses.clear()
+        self.process_tremor_flavors()
             
     def update_stagger_level(self):
         if not self.stagger_tresholds: return
         self.stagger_tresholds.sort()
-        biggest_hp_treshold = self.stagger_tresholds[-1] * self.max_hp
+        biggest_hp_treshold = self.stagger_tresholds[0]
         if self.hp <= biggest_hp_treshold:
             self.stagger()
             self.stagger_tresholds.pop()
             while len(self.stagger_tresholds) > 0:
-                next_treshold = self.stagger_tresholds[-1] * self.max_hp
+                next_treshold = self.stagger_tresholds[0]
                 if self.hp < next_treshold:
                     self.stagger()
                     self.stagger_tresholds.pop()
@@ -796,6 +816,12 @@ class Environment:
             if effect.on_status_applied:
                 effect.on_status_applied(effect, self, status_name, potency, count)
         self.update_apply_queue()
+    
+    def on_tremor_burst(self):
+        for effect in self.effects:
+            if effect.on_tremor_burst:
+                effect.on_tremor_burst(effect, self)
+        self.update_apply_queue()
 
 class SkillEffectConstructors:
     @staticmethod
@@ -945,6 +971,10 @@ class SkillEffectConstructors:
     @staticmethod
     def OnHeadsHit(effect : 'SkillEffect', condition : 'AnySkillConditional' = -1):
         return sk.new("OnHeadsHit", effect, condition=condition)
+    
+    @staticmethod
+    def OnTailsHit(effect : 'SkillEffect', condition : 'AnySkillConditional' = -1):
+        return sk.new("OnTailsHit", effect, condition=condition)
     
     @staticmethod
     def OnCrit(effect : 'SkillEffect', condition : 'AnySkillConditional' = -1, duration : int = 1):
@@ -1518,12 +1548,12 @@ class SkillEffectConstructors:
         return SkillEffect('dynamic', 'add', 0.1, condition=SkillConditionals.EnemyPhysResWeakOrFatal)
     
     @staticmethod
-    def TremorDecay(potency : int, status_effect : 'StatusEffect'):
+    def Tremor(potency : int, status_effect : 'StatusEffect'):
         effect = SkillEffect('def_level_mod', 'add', potency)
         effect.special_data = status_effect
         effect.apply = SpecialSkillEffects.apply_nothing_wduration
-        effect.early_update = SpecialSkillEffects.TremorDecayEarlyUpdate
-        effect.megalate_update = SpecialSkillEffects.TremorDecayCleanup
+        effect.early_update = SpecialSkillEffects.TremorEarlyUpdate
+        effect.megalate_update = SpecialSkillEffects.TremorCleanup
         return effect
     
     @staticmethod
@@ -1588,6 +1618,24 @@ class SkillEffectConstructors:
         effect.apply = SpecialSkillEffects.ButterflyEffect
         effect.late_update = SpecialSkillEffects.ButterflyEffectLateUpdate
         return effect
+    
+    @staticmethod
+    def TCorpLuPassive():
+        effect = SkillEffect('dynamic', 'add', 0, apply_func=SpecialSkillEffects.TCorpLuPassive)
+        effect.on_tremor_burst = SpecialSkillEffects.TCorpLuPassiveOnTremorBurst
+        return effect
+    
+    @staticmethod
+    def TremorBurst(count_reduced : int = 0, condition : 'AnySkillConditional' = -1):
+        return SkillEffect('dynamic', 'add', count_reduced, apply_func=SpecialSkillEffects.TremorBurst, condition=condition)
+    
+    @staticmethod
+    def ReverbEntanglement(condition : 'AnySkillConditional' = -1):
+        return SkillEffect('dynamic', 'add', 0, apply_func=SpecialSkillEffects.ReverbEntanglement, condition=condition)
+    
+    @staticmethod
+    def TCorpLuS3CoinPower():
+        return SkillEffect('dynamic', 'add', 0, apply_func=SpecialSkillEffects.TCorpLuS3CoinPower)
 
 def get_dlup_str():
     return f'unit.statuses.{StatusNames.defense_level_up}.count'
@@ -1963,6 +2011,7 @@ class SkillEffect:
         self.megalate_update = None
         self.on_poise_gained = None
         self.on_status_applied = None
+        self.on_tremor_burst = None
 
         if not (apply_func is None): self.apply = apply_func
         else: self.apply = SpecialSkillEffects.apply
@@ -1998,6 +2047,9 @@ class SkillEffect:
         pass
     @staticmethod
     def on_status_applied(self : 'SkillEffect', env : Environment, status_name : str, potency : int, count : int):
+        pass
+    @staticmethod
+    def on_tremor_burst(self : 'SkillEffect', env : Environment):
         pass
 
 class SpecialSkillEffects: 
@@ -3515,22 +3567,52 @@ class SpecialSkillEffects:
         env.total += bonus
         env.effects[self] = [bonus, -1]
 
-    def TremorDecayEarlyUpdate(self : SkillEffect, env : Environment):
+    def TremorEarlyUpdate(self : SkillEffect, env : Environment):
         tremor : StatusEffect = self.special_data
         self.value = tremor.potency
         if self.value <= 0: env.effects[self][0] = 0; return
-        def_mod : int = tremor.potency // 4 if getattr(env.enemy, 'tremor_decay', False) else 0
+        def_mod : int = tremor.potency // 4 if env.enemy.has_tremor_flavor(TremorFlavors.decay) else 0
         env.effects[self][0] = def_mod
         env.def_level_mod -= def_mod
     
-    def TremorDecayCleanup(self : SkillEffect, env : Environment):
+    def TremorCleanup(self : SkillEffect, env : Environment):
         def_mod : int = env.effects[self][0]
         env.effects[self][0] = 0
         env.def_level_mod += def_mod
 
     def TremorDecayConversion(self : SkillEffect, env : Environment):
-        env.enemy.tremor_decay = True
+        current_flavor : None|str|list[str] = getattr(env.enemy, 'tremor_flavor', None)
+        if current_flavor is None or type(current_flavor) == str:
+            env.enemy.tremor_flavor = TremorFlavors.decay
+        elif TremorFlavors.decay not in current_flavor:
+            env.enemy.tremor_flavor.append(TremorFlavors.decay)
         env.effects[self] = [0, -1]
+    
+    def ReverbEntanglement(self : SkillEffect, env : Environment):
+        current_flavor : None|str|list[str] = getattr(env.enemy, 'tremor_flavor', None)
+        if current_flavor is None or current_flavor == TremorFlavors.reverb:
+            env.enemy.tremor_flavor = [TremorFlavors.reverb]
+        elif type(current_flavor) == str:
+            env.enemy.tremor_flavor = [TremorFlavors.reverb, env.enemy.tremor_flavor]
+        elif TremorFlavors.decay not in current_flavor:
+            env.enemy.tremor_flavor.append(TremorFlavors.reverb)
+        env.effects[self] = [0, -1]
+    
+    def TremorBurst(self : SkillEffect, env : Environment):
+        env.effects[self] = [0, -1]
+        if not env.enemy.has_status('Tremor'): return
+        tremor_pot : int = env.enemy.statuses['Tremor'].potency
+        env.enemy.raise_stagger_treshold(tremor_pot, env)
+        if env.enemy.has_tremor_flavor(TremorFlavors.reverb):
+            sloth_damage : int = floor(tremor_pot * env.enemy.sin_res['Sloth'])
+            env.enemy.take_damage(sloth_damage, env)
+            if not env.ignore_fixed_damage:
+                env.total += sloth_damage
+        
+        env.on_tremor_burst()
+        env.enemy.statuses['Tremor'].consume_count(self.value)
+        
+    
 
     def ZweiSinclairWestS3Tremor(self : SkillEffect, env : Environment):
         env.effects[self] = [0, -1]
@@ -3679,6 +3761,25 @@ class SpecialSkillEffects:
         if not env.ignore_fixed_damage:
             env.total += total_damage
 
+    def TCorpLuPassive(self : SkillEffect, env : Environment):
+        self.special_data = 0
+        env.effects[self] = [0, -1]
+    
+    def TCorpLuPassiveOnTremorBurst(self : SkillEffect, env : Environment):
+        if self.special_data < 3:
+            env.unit.apply_status_next_turn(StatusNames.damage_up, 0, 1)
+            self.special_data += 1
+    
+    def TCorpLuS3CoinPower(self : SkillEffect, env : Environment):
+        if env.unit.tremor >= 15:
+            env.coin_power += 3
+            env.unit.tremor -= 15
+            env.global_state['ConsumedTremor'] = 15
+        elif env.unit.tremor >= 10:
+            env.coin_power += 2
+            env.unit.tremor -= 10
+            env.global_state['ConsumedTremor'] = 10
+        else: env.global_state['ConsumedTremor'] = 0
 
 SkillConditional = Callable[[SkillEffect, Environment], bool]
 AnySkillConditional = Union[int, SkillConditional]
@@ -3737,6 +3838,19 @@ class SkillConditionals:
     @staticmethod
     def ButterSangAttackCancelled(self : SkillEffect, env : Environment, data = None) -> bool:
         return getattr(env.unit, 'attack_cancel', False)
+    
+    @staticmethod
+    def PassiveActive(self : SkillEffect, env : Environment, data = None) -> bool:
+        return getattr(env.unit, 'passive', False)
+    
+    @staticmethod
+    def ConsumedTremor(self : SkillEffect, env : Environment, data = None) -> bool:
+        return True if env.global_state.get('ConsumedTremor', 0) else False
+    
+    @staticmethod
+    def Enemy6PlusTremor(self : SkillEffect, env : Environment, data = None) -> bool:
+        if not env.enemy.has_status('Tremor'): return False
+        return env.enemy.statuses['Tremor'].potency >= 6
     
 GetterMethod = Callable[[SkillEffect, Environment], float|int|Any]
 SetterMethod = Callable[[SkillEffect, Environment, float|int|Any], None]
@@ -4205,7 +4319,7 @@ class SpecialStatusEffects:
     @staticmethod
     def apply_tremor(self : 'StatusEffect', env : Environment, is_defending : bool = True):
         if not is_defending: return
-        new_effect = skc.TremorDecay(self.count, self)
+        new_effect = skc.Tremor(self.count, self)
         env.apply_queue.append(new_effect)
 
 
@@ -4221,6 +4335,10 @@ class DamageTypes:
     gloom = "Gloom"
     pride = "Pride"
     envy = "Envy"
+
+class TremorFlavors:
+    decay = 'Decay'
+    reverb = 'Reverb'
 
 class SkillTagNames:
     spends_charge = 'SpendsCharge'
@@ -4256,10 +4374,9 @@ SKILLS = {
 
 
 "Umbrella Thwack" : Skill((6, -2, 3), 2, "Umbrella Thwack", ("Blunt", "Envy"), [[], [], []]),
-"Puddle Stomp" : Skill((10, -3, 4), 3, "Puddle Stomp", ("Blunt", "Gloom"), 
-                       [[], [], [], [SkillEffect("dynamic", "add", 0.20, condition= 2)]], 
-                       [sk.new("BasePower", 3, condition = 0), sk.new("BasePower", 2, condition=1)]),
-"Spread Out!" : Skill((18, -7, 3), 3, "Spread Out!", ("Pierce", "Sloth"), [[], [], []] ),
+"Puddle Stomp" : Skill((10, -3, 4), 3, "Puddle Stomp", ("Blunt", "Gloom"), [[], [], [], [skc.DynamicBonus(0.2, 0)]], 
+[skc.AddXForEachY(3, 'base', -15, 'unit.sp', 0, 3), skc.AddXForEachY(2, 'base', -25, 'unit.sp', 0, 2)]),
+"Spread Out!" : Skill((18, -7, 3), 3, "Spread Out!", ("Pierce", "Sloth"), [[], [], [skc.OnTailsHit(skc.ApplyStatusCountNextTurn('Fragile', 1))]]),
 
 
 "Stalk Prey" : Skill((3, 4, 2), 1, "Stalk Prey", ("Pierce", "Pride"), [[], []]),
@@ -5000,7 +5117,16 @@ skc.OnHit(skc.TRodyaMoratium())]], [skc.TRodyaS3CoinPower(), skc.AddXForEachY(0.
 "Goodbye Now, A Sorrow In You" : Skill((4, 3, 4), 5, "Goodbye Now, A Sorrow In You", ("Pierce", "Sloth"), 
 [[*skc.ButterflySangShortcut(1)], [*skc.ButterflySangShortcut(6)], [skc.ButterflySangS3ConsumeAmmo(), skc.InflictBulletButterfly()], [skc.OnHit(skc.ButterflySangS3Bonus())]],
 [skc.DAddXForEachY(1, 'coin_power', 6, GetterMethods.ButterflySinkingSum, 0, 2), skc.AddXForEachY(1, 'base', 5, GetterMethods.ButterflySangAmmoSum, 0, 4), 
- skc.ApplyStatusCount('Sinking', 3, condition=0), skc.AfterAttack(skc.ButterflySangReload())])
+skc.ApplyStatusCount('Sinking', 3, condition=0), skc.AfterAttack(skc.ButterflySangReload())]),
+
+"Deduction Start" : Skill((3, 4, 2), 2, "Deduction Start", ("Blunt", "Gloom"), 
+[[skc.OnHit(skc.ApplyStatus('Tremor', 2))], [skc.OnHit(skc.GainTremor(2))]], [skc.GainTremor(2), skc.DAddXForEachY(1, 'coin_power', 6, 'unit.tremor')]),
+"Morph Cane Technique" : Skill((4, 4, 3), 2, "Morph Cane Technique", ("Pierce", "Sloth"), 
+[[skc.OnHit(skc.GainTremor(3))], [skc.OnHit(skc.ApplyStatus('Tremor', 3))], [skc.OnHit(skc.TremorBurst(1, SkillConditionals.Enemy6PlusTremor))]],
+[skc.GainTremor(3), skc.DAddXForEachY(1, 'coin_power', 5, 'unit.tremor')]),
+"You're the Culprit!" : Skill((3, 3, 4), 4, "You're the Culprit!", ("Pierce", "Gluttony"), [[skc.OnHit(skc.ReverbEntanglement(SkillConditionals.ConsumedTremor))], 
+[skc.OnHit(skc.TremorBurst(1))], [skc.OnHit(skc.TremorBurst(1, SkillConditionals.ConsumedTremor))], [skc.OnHit(skc.TremorBurst(1, SkillConditionals.ConsumedTremor))]],
+[skc.TCorpLuS3CoinPower()])
 }
 ENEMIES = {
     "Test" : Enemy(40, 100, {}, {}),
@@ -5131,5 +5257,6 @@ UNITS = {
     "Cinq Meur" : Unit("Cinq Meur", (gs("Allez"), gs("Fente"), gs("Salut"))),
     "T Rodya" : Unit("T Rodya", (gs("Prepare to Collect"), gs("T Corp. Martial Suppression"), gs("Execute Collections"))),
     "T Don" : Unit("T Don", (gs("Let Us Prepare to Collect"), gs("T Corp. Accelerated Amputator"), gs("I Command Thee, Halt!"))),
-    "Butterfly Sang" : Unit("Butterfly Sang", (gs("Celebration for the Departed"), gs("Solemn Lament for the Living"), gs("Goodbye Now, A Sorrow In You")))
+    "Butterfly Sang" : Unit("Butterfly Sang", (gs("Celebration for the Departed"), gs("Solemn Lament for the Living"), gs("Goodbye Now, A Sorrow In You"))),
+    "Yuro Lu" : Unit("Yuro Lu", (gs("Deduction Start"), gs("Morph Cane Technique"), gs("You're the Culprit!")))
     }

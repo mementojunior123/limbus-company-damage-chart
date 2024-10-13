@@ -3566,7 +3566,7 @@ def oufi_heathcliff_rotation(unit : Unit, enemy : Enemy, debug : bool = False, s
     enemy.apply_status(backend.StatusNames.tremor, 0,0)
     tremor_status : backend.StatusEffect = enemy.statuses.get(backend.StatusNames.tremor)
     tremor_status.potency, tremor_status.count = start_tremor
-    enemy.tremor_decay = decay
+    enemy.tremor_flavor = 'Decay' if decay else None
     for i in range(6):
         enemy.on_turn_start()
         dashboard = [bag[0], bag[1]]
@@ -3876,3 +3876,78 @@ def gunsang_reload(unit : Unit):
     elif unit.the_living <= 0:
         unit.the_living = 1
         unit.the_departed -= 1
+    
+
+def tcorp_lu_rotation(unit : Unit, enemy : Enemy, debug : bool = False, unit_tremor : int = 0, start_tremor : tuple[int, int] = (0,0), passive_active : bool = False,
+                       reverb : bool = False, ignore_reverb_damage : bool = True):
+    sequence = [None for _ in range(6)]
+    bag = get_bag()
+
+    skills = {1 : unit.skill_1, 2 : unit.skill_2, 3 : unit.skill_3}
+    total = 0
+    unit.tremor = unit_tremor
+    if passive_active: unit.apply_unique_effect('passive', backend.skc.TCorpLuPassive(), True)
+    enemy.apply_status(backend.StatusNames.tremor, 0,0)
+    tremor_status : backend.StatusEffect = enemy.statuses.get(backend.StatusNames.tremor)
+    tremor_status.potency, tremor_status.count = start_tremor
+    enemy.tremor_flavor = backend.TremorFlavors.reverb if reverb else None
+    for i in range(6):
+        enemy.on_turn_start()
+        unit.on_turn_start()
+        dashboard = [bag[0], bag[1]]
+        a = max(dashboard)
+        b = min(dashboard)
+        decision = a
+        if unit.tremor < 10 and decision == 3:
+            decision = b
+       
+        
+        result = skills[decision].calculate_damage(unit, enemy, debug=debug, ignore_fixed_damage=ignore_reverb_damage)
+        total += result
+        
+        if debug: print(result)
+        sequence[i] = str(decision)
+        bag.remove(decision)
+
+        
+        
+        if len(bag) < 2:
+            bag += get_bag()
+        enemy.on_turn_end()
+        unit.on_turn_end()
+        if unit.tremor > 0: unit.tremor -= 1
+    if debug: print("-".join(sequence))
+    return total
+
+
+def suncliff_rotation(unit : Unit, enemy : Enemy, debug : bool = False, blunt_damage_up : int = 0, start_sp : int = 0, s2_cond : bool = True):
+    sequence = [None for _ in range(6)]
+    bag = get_bag()
+
+    skills = {1 : unit.skill_1, 2 : unit.skill_2, 3 : unit.skill_3}
+    total = 0
+    if blunt_damage_up: unit.apply_unique_effect('passive', backend.skc.TypedDamageUp('Blunt', blunt_damage_up), True)
+    unit.sp = start_sp
+    unit.skill_2.set_conds([s2_cond])
+    for i in range(6):
+        enemy.on_turn_start()
+        dashboard = [bag[0], bag[1]]
+        a = max(dashboard)
+        b = min(dashboard)
+        decision = a
+       
+        
+        result = skills[decision].calculate_damage(unit, enemy, debug=debug)
+        total += result
+        
+        if debug: print(result)
+        sequence[i] = str(decision)
+        bag.remove(decision)
+
+        
+        
+        if len(bag) < 2:
+            bag += get_bag()
+        enemy.on_turn_end()
+    if debug: print("-".join(sequence))
+    return total
