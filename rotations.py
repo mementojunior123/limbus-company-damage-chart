@@ -3770,3 +3770,109 @@ def t_don_rotation(unit : Unit, enemy : Enemy, debug : bool = False, tremor : in
         if unit.tremor > 0: unit.tremor -= 1
     if debug: print("-".join(sequence))
     return total
+
+def butterfly_sang_rotation(unit : Unit, enemy : Enemy, debug : bool = False, 
+                            start_sinking : tuple[int, int] = (0,0), start_butterfly : tuple[int, int] = (0,0), start_ammo : tuple[int, int] = (10,10),
+                            clash_count : int = 2, highest_res : int = 0, isares : bool = False, exclude_butterfly_damage : bool = True):
+    sequence = [None for _ in range(6)]
+    bag = get_bag()
+
+    skills = {1 : unit.skill_1, 2 : unit.skill_2, 3 : unit.skill_3}
+    total = 0
+    unit.the_living, unit.the_departed = start_ammo
+    for skill in unit.skills:
+        skill.set_conds([True])
+    enemy.apply_status('Sinking', 0, 0)
+    the_sinking : backend.StatusEffect = enemy.statuses['Sinking']
+    the_sinking.potency, the_sinking.count = start_sinking
+
+    enemy.apply_status('Butterfly', 0, 0)
+    the_sinking : backend.StatusEffect = enemy.statuses['Butterfly']
+    the_sinking.potency, the_sinking.count = start_butterfly
+    for i in range(6):
+        enemy.on_turn_start()
+        unit.attack_cancel = False
+        dashboard = [bag[0], bag[1]]
+        a = max(dashboard)
+        b = min(dashboard)
+        decision = a
+        if decision == 3:
+            if unit.the_living + unit.the_departed < 7:
+                decision = b if (b == 2) or (unit.the_living + unit.the_departed <= 2) else 'Guard' if bag[0] != 3 else b
+        if decision != 'Guard':
+            unit.sp += 10 + (clash_count - 1) * 2 if clash_count else 0
+        unit.clamp_sp()
+        if debug: print(f"Before {'attack' if decision != 'Guard' else 'guard'} : {unit.sp} sp, ({unit.the_living}x{unit.the_departed}) the living and the departed")
+        if decision != 'Guard':
+            result = skills[decision].calculate_damage(unit, enemy, debug=debug, ignore_fixed_damage= exclude_butterfly_damage)
+            total += result
+        else:
+            gunsang_reload(unit)
+            if debug: print(f"Reloading")
+            result = 'Guard'
+        
+        if not unit.attack_cancel and decision == 2:
+            if not isares:
+                gunsang_random_ammo(unit, backend.clamp(highest_res, 0, 6))
+            elif isares:
+                if highest_res >= 4:
+                    gunsang_reload(unit)
+                    if debug: print(f"Reloading")
+                else:
+                    gunsang_random_ammo(unit, backend.clamp(highest_res * 2, 0, 12))
+        if unit.the_living + unit.the_departed <= 0:
+            gunsang_reload(unit)
+            if debug: print(f"Reloading")
+
+        if debug: print(result)
+        sequence[i] = str(decision)
+        bag.remove(decision) if decision != 'Guard' else bag.pop(0)
+
+        
+        
+        if len(bag) < 2:
+            bag += get_bag()
+        enemy.on_turn_end()
+    if debug: print("-".join(sequence))
+    return total
+
+def gunsang_random_ammo(unit : Unit, count : int):
+    departing_weight : float
+    if unit.sp >= 0:
+        departing_weight = 0.7
+    else:
+        departing_weight = 0.3
+    for _ in range(count):
+        if unit.the_living + unit.the_departed >= 20: break
+        if random() <= departing_weight:
+            unit.the_departed += 1
+        else:
+            unit.the_living += 1
+    if unit.the_departed <= 0:
+        unit.the_departed = 1
+        unit.the_living -= 1
+    elif unit.the_living <= 0:
+        unit.the_living = 1
+        unit.the_departed -= 1
+
+def gunsang_reload(unit : Unit):
+    unit.sp -= (30 - (unit.the_living + unit.the_departed)) // 2
+    unit.clamp_sp()
+    departing_weight : float
+    if unit.sp >= 0:
+        departing_weight = 0.7
+    else:
+        departing_weight = 0.3
+    unit.the_living = 0
+    unit.the_departed = 0
+    for _ in range(20):
+        if random() <= departing_weight:
+            unit.the_departed += 1
+        else:
+            unit.the_living += 1
+    if unit.the_departed <= 0:
+        unit.the_departed = 1
+        unit.the_living -= 1
+    elif unit.the_living <= 0:
+        unit.the_living = 1
+        unit.the_departed -= 1

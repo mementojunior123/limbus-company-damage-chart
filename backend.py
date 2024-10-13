@@ -340,7 +340,7 @@ class Skill:
         env.current_power = env.base
         
         
-
+        if debug: print(f'Using skill {self.name} (skill type = {self.skill_type})')
 
         for i, coin in enumerate(self.coins):
             env.current_damage = 0
@@ -349,6 +349,16 @@ class Skill:
                 if effect.early_update:
                     effect.early_update(effect, env)
             env.update_apply_queue()
+            if env.CANCEL_ATTACK:
+                env.CANCEL_ATTACK = False
+                env.update()
+                if debug: print(f"Attack Cancelled")
+                break
+            if env.CANCEL_COIN:
+                env.CANCEL_COIN = False
+                env.update()
+                if debug: print("Coin Cancelled")
+                continue
             if i >= len(sequence):
                 sequence.append(None)
             head_odds = 50 + owner.sp
@@ -398,7 +408,16 @@ class Skill:
             env.update_apply_queue()
 
             
-
+            if env.CANCEL_ATTACK:
+                env.CANCEL_ATTACK = False
+                env.update()
+                if debug: print(f"Attack Cancelled")
+                break
+            if env.CANCEL_COIN:
+                env.CANCEL_COIN = False
+                env.update()
+                if debug: print("Coin Cancelled")
+                continue
 
 
             ol_mult = (env.ol - env.def_level) / (abs(env.def_level - env.ol) + 25)
@@ -430,12 +449,17 @@ class Skill:
                 if effect.megalate_update:
                     effect.megalate_update(effect, env)
             env.update_apply_queue()
+            
         for effect in env.effects:
             effect.on_skill_end(effect, env)
+            #if env.debug_mode: print(effect.on_skill_end.__name__)
         env.update_apply_queue()
         enemy.on_skill_end(env, is_defending = True)
         owner.on_skill_end(env, is_defending = False)
 
+        for index, val in enumerate(sequence):
+            if val is None:
+                sequence[index] = 'None'
         if debug:
             print("-".join(sequence))
 
@@ -699,6 +723,8 @@ class Environment:
         self.global_state = AttrStrDict()
         self.CONSUME_RUPTURE : bool = True
         self.CONSUME_POISE : bool = True
+        self.CANCEL_ATTACK : bool = False
+        self.CANCEL_COIN : bool = False
     
     @property
     def def_level(self) -> int:
@@ -930,7 +956,7 @@ class SkillEffectConstructors:
     
     @staticmethod
     def AfterAttack(effect_to_trigger : 'SkillEffect', condition : 'AnySkillConditional' = -1):
-        effect = SkillEffect("dynamic", "add", 0, condition= condition, duration=1)
+        effect = SkillEffect("dynamic", "add", 0, condition= condition, duration=-1)
         effect.on_skill_end = SpecialSkillEffects.on_hit_trigger
         effect.special_data = effect_to_trigger
         return effect
@@ -948,8 +974,9 @@ class SkillEffectConstructors:
         return effect
     
     @staticmethod
-    def AddXForEachY(x_step : float|int, x_name : str, y_step : float|int, y_name : str, min : float|int = 0, max : float|int = 1, offset : float|int = 0,
-                     condition : 'AnySkillConditional' = -1, duration : int = -1):
+    def AddXForEachY(x_step : float|int, x_name : Union[str, 'SetterMethod'], y_step : float|int, 
+                      y_name : Union[str, 'GetterMethod'], min : float|int = 0, max : float|int = 1, offset : float|int = 0,
+                      condition : 'AnySkillConditional' = -1, duration : int = -1):
         effect = SkillEffect(x_name, "add", x_step, condition= condition, duration=duration, 
         data = {"x_step": x_step, "x_name": x_name, "y_step": y_step, "y_name": y_name, "range": (min, max), "offset" : offset})
         
@@ -1527,6 +1554,41 @@ class SkillEffectConstructors:
     def TDonMoratium():
         return SkillEffect('dynamic', 'add', 0, apply_func=SpecialSkillEffects.TDonMoratium)
     
+    @staticmethod
+    def ButterflySangConsumeAmmo(count : int):
+        return SkillEffect('dynamic', 'add', count, apply_func=SpecialSkillEffects.ButterflySangConsumeAmmo)
+    
+    @staticmethod
+    def ButterflySangS3ConsumeAmmo():
+        return SkillEffect('dynamic', 'add', 0, apply_func=SpecialSkillEffects.ButterflySangS3ConsumeAmmo)
+    
+    @staticmethod
+    def ButterflySangS3Bonus():
+        return SkillEffect('dynamic', 'add', 0, apply_func=SpecialSkillEffects.ButterflySangS3Bonus)
+    
+    @staticmethod
+    def InflictBulletButterfly():
+        return SkillEffect('dynamic', 'add', 0, apply_func=SpecialSkillEffects.InflictBulletButterfly)
+    
+    @staticmethod
+    def ButterflySangReload(condition : 'AnySkillConditional' = -1):
+        return SkillEffect('dynamic', 'add', 0, apply_func=SpecialSkillEffects.ButterflySangReload, condition=condition)
+    
+    @staticmethod
+    def ButterflySangShortcut(count : int):
+        return (skc.ButterflySangConsumeAmmo(count), skc.OnHit(skc.InflictBulletButterfly()))
+    
+    @staticmethod
+    def ButterflySangCondReload():
+        return skc.AfterAttack(skc.ButterflySangReload(condition=SkillConditionals.ButterSangAttackCancelled))
+    
+    @staticmethod
+    def Butterfly(status_effect : 'StatusEffect'):
+        effect = SkillEffect('dynamic', 'add', status_effect)
+        effect.apply = SpecialSkillEffects.ButterflyEffect
+        effect.late_update = SpecialSkillEffects.ButterflyEffectLateUpdate
+        return effect
+
 def get_dlup_str():
     return f'unit.statuses.{StatusNames.defense_level_up}.count'
 
@@ -1943,7 +2005,7 @@ class SpecialSkillEffects:
     def on_hit_trigger(self : SkillEffect, env : Environment):
         effect_to_trigger : SkillEffect = self.special_data
         env.apply_queue.append(effect_to_trigger)
-        #print(f'OnHit applying {effect_to_trigger.apply.__}')
+        #if env.debug_mode: print(f'OnHit applying {effect_to_trigger.apply.__name__}')
 
     def on_heads_hit_trigger(self : SkillEffect, env : Environment):
         effect_to_trigger : SkillEffect = self.special_data
@@ -2224,8 +2286,6 @@ class SpecialSkillEffects:
             env.add(name, -cost)
 
     def add_foreach_y(self : SkillEffect, env :Environment):
-        
-
         name = self.name
         val = self.value
         op = self.operation
@@ -2233,18 +2293,20 @@ class SpecialSkillEffects:
 
         data = self.special_data
 
-            
+        y_name : str|Callable[[SkillEffect, Environment], float|int] = data['y_name']
+        y_result = env.get(y_name) if type(y_name) == str else y_name(self, env)
+        x_name : str|Callable[[SkillEffect, Environment, float|int], None] = data['x_name']
+        offset : float|int = data['offset']
 
-        increment_count = (env.get(data["y_name"]) - data["offset"]) // data["y_step"]
+        increment_count = (y_result - offset) // data["y_step"]
 
         total = increment_count * data["x_step"]
 
         my_min, my_max = data["range"]
         if total < my_min: total = my_min
         if total > my_max: total = my_max
-
-        if op == "add":
-            env.add(data["x_name"], total)
+        if op == "add" or True:
+            env.add(x_name, total) if type(x_name) == str else x_name(self, env, total)
             env.effects[self] = [total, time]
 
     def d_add_foreach_y(self : SkillEffect, env : Environment):
@@ -3507,6 +3569,116 @@ class SpecialSkillEffects:
             else:
                 env.enemy.tremor -= 5 
         env.effects[self] = [0, -1]
+    
+    def ButterflySangConsumeAmmo(self : SkillEffect, env : Environment):
+        env.effects[self] = [0, -1]
+        ammo_consumed : int = self.value
+        ammo_sum : int = env.unit.the_living + env.unit.the_departed
+        if ammo_consumed > ammo_sum:
+            env.CANCEL_ATTACK = True
+            env.unit.attack_cancel = True
+            return
+        current_living : int = env.unit.the_living
+        current_departed : int = env.unit.the_departed
+        living_consumed : int = 0
+        departed_consumed : int = 0
+        for _ in range(ammo_consumed):
+            if (current_living > 0) and (current_departed > 0):
+                if randint(1,2) == 1: 
+                    living_consumed += 1
+                    current_living -= 1
+                else: 
+                    departed_consumed += 1
+                    current_departed -= 1
+            elif current_living > 0:
+                living_consumed += 1
+                current_living -= 1
+            else:
+                departed_consumed += 1
+                current_departed -= 1
+        env.global_state['living_consumed'] = living_consumed
+        env.global_state['departed_consumed'] = departed_consumed
+        env.global_state['ammo_consumed'] = ammo_consumed
+        env.global_state['total_consumed'] = ammo_consumed + env.global_state.get('total_consumed', 0)
+        env.unit.the_living -= living_consumed
+        env.unit.the_departed -= departed_consumed
+    
+    def ButterflySangS3ConsumeAmmo(self : SkillEffect, env : Environment):
+        env.effects[self] = [0, -1]
+        ammo_sum : int = env.unit.the_living + env.unit.the_departed
+        current_living : int = env.unit.the_living
+        current_departed : int = env.unit.the_departed
+        living_consumed : int = current_living
+        departed_consumed : int = current_departed
+
+        env.global_state['living_consumed'] = living_consumed
+        env.global_state['departed_consumed'] = departed_consumed
+        env.global_state['ammo_consumed'] = ammo_sum
+        env.global_state['total_consumed'] = ammo_sum + env.global_state.get('total_consumed', 0)
+        env.unit.the_living -= living_consumed
+        env.unit.the_departed -= departed_consumed
+        dynamic_bonus : float = env.global_state['total_consumed'] * 0.04
+        env.apply_queue.append(skc.DynamicBonus(dynamic_bonus, duration=1))
+    
+    def ButterflySangS3Bonus(self : SkillEffect, env : Environment):
+        the_butterfly : StatusEffect = env.enemy.statuses[StatusNames.butterfly]
+        base_damage : int = the_butterfly.potency + the_butterfly.count
+        total_damage : int = floor(base_damage * env.enemy.sin_res['Gloom'])
+        env.enemy.take_damage(total_damage, env)
+        env.total += total_damage
+    
+    def InflictBulletButterfly(self : SkillEffect, env : Environment):
+        living : int = env.global_state['living_consumed']
+        departed : int = env.global_state['departed_consumed']
+        env.enemy.apply_status(StatusNames.butterfly, living, departed)
+        env.effects[self] = [0, -1]
+    
+    def ButterflySangReload(self : SkillEffect, env : Environment):
+        env.unit.sp -= (30 - (env.unit.the_living + env.unit.the_departed)) // 2
+        departing_weight : float
+        if env.unit.sp >= 0:
+            departing_weight = 0.7
+        else:
+            departing_weight = 0.3
+        env.unit.the_living = 0
+        env.unit.the_departed = 0
+        for _ in range(20):
+            if random() <= departing_weight:
+                env.unit.the_departed += 1
+            else:
+                env.unit.the_living += 1
+        if env.unit.the_departed <= 0:
+            env.unit.the_departed = 1
+            env.unit.the_living -= 1
+        elif env.unit.the_living <= 0:
+            env.unit.the_living = 1
+            env.unit.the_departed -= 1
+        env.effects[self] = [0, -1]
+        if env.debug_mode:
+            print('Reloading')
+
+    def ButterflyEffect(self : SkillEffect, env : Environment):
+        env.effects[self] = [0, -1]
+    
+    def ButterflyEffectLateUpdate(self : SkillEffect, env : Environment):
+        butterfly_status : StatusEffect = self.value
+        env.unit.sp += clamp(butterfly_status.potency // 4, 1, 999)
+        env.unit.clamp_sp()
+        if not env.enemy.has_status('Sinking'): return
+        gloom_dmg : int
+        sinking_potency : int = env.enemy.statuses['Sinking'].potency
+        enemy_sp : int|None = getattr(env.enemy, 'sp', None)
+        if enemy_sp is None:
+            gloom_dmg = clamp(floor(sinking_potency // 5 * butterfly_status.count) // 2, 0, 30)
+        elif enemy_sp < 0:
+            gloom_dmg = clamp(floor(sinking_potency // 5 * butterfly_status.count), 0, 30)
+        else:
+            gloom_dmg = 0
+        total_damage : int = floor(gloom_dmg * env.enemy.sin_res['Gloom'])
+        env.enemy.take_damage(total_damage, env)
+        if not env.ignore_fixed_damage:
+            env.total += total_damage
+
 
 SkillConditional = Callable[[SkillEffect, Environment], bool]
 AnySkillConditional = Union[int, SkillConditional]
@@ -3561,13 +3733,33 @@ class SkillConditionals:
         if not env.enemy.has_status('Tremor'): return False
         the_tremor : StatusEffect = env.enemy.statuses['Tremor']
         return (the_tremor.potency + the_tremor.count >= 20)
-
+    
+    @staticmethod
+    def ButterSangAttackCancelled(self : SkillEffect, env : Environment, data = None) -> bool:
+        return getattr(env.unit, 'attack_cancel', False)
+    
 GetterMethod = Callable[[SkillEffect, Environment], float|int|Any]
 SetterMethod = Callable[[SkillEffect, Environment, float|int|Any], None]
 class GetterMethods:
     @staticmethod
-    def RedRyoSum(self : SkillEffect, env : Environment):
+    def RedRyoSum(self : SkillEffect, env : Environment) -> int:
         return env.unit.red_eyes + env.unit.penitence
+    
+    @staticmethod
+    def ButterflySangAmmoSum(self : SkillEffect, env : Environment) -> int:
+        return env.unit.the_living + env.unit.the_departed
+
+    @staticmethod
+    def ButterflySinkingSum(self : SkillEffect, env : Environment) -> int:
+        the_sum : int = 0
+        if env.enemy.has_status('Sinking'):
+            the_sum += env.enemy.statuses['Sinking'].potency
+        if env.enemy.has_status(StatusNames.butterfly):
+            the_sum += env.enemy.statuses[StatusNames.butterfly].potency
+            the_sum += env.enemy.statuses[StatusNames.butterfly].count
+        return the_sum
+    
+    
     
 
 sk = SkillEffect
@@ -3575,6 +3767,7 @@ skc = SkillEffectConstructors
 
 class StatusNames:
     echoes_of_the_manor = 'Echoes of the Manor'
+    butterfly = 'Butterfly'
     sinking = 'Sinking'
     rupture = 'Rupture'
     bleed = 'Bleed'
@@ -3679,6 +3872,11 @@ class StatusEffect:
                 new_effect._max_count = 3
                 new_effect.on_skill_start = SpecialStatusEffects.apply_manors
                 new_effect.on_turn_end = SpecialStatusEffects.drain_count
+            case StatusNames.butterfly:
+                new_effect._max_potency = 15
+                new_effect._max_count = 15
+                new_effect.on_skill_start = SpecialStatusEffects.apply_butterfly
+                new_effect.on_turn_end = SpecialStatusEffects.butterfly_turn_end
             case StatusNames.weakness_analyzed:
                 new_effect._has_potency = False
                 new_effect._max_count = 1
@@ -3864,6 +4062,13 @@ class SpecialStatusEffects:
         self.consume_count(self.count)
     
     @staticmethod
+    def butterfly_turn_end(self : StatusEffect):
+        self.count = 0
+        self.owner.apply_status('Sinking', self.potency, 0)
+        self.count = self.potency
+        self.potency = 0
+
+    @staticmethod
     def charge_barrier_turn_end(self : StatusEffect):
         count = self.count
         self.consume_count(self.count)
@@ -3883,6 +4088,12 @@ class SpecialStatusEffects:
     def apply_manors(self : 'StatusEffect', env : Environment, is_defending : bool = True):
         if not is_defending: return
         new_effect = skc.EchoesOfTheManor()
+        env.apply_queue.append(new_effect)
+    
+    @staticmethod
+    def apply_butterfly(self : 'StatusEffect', env : Environment, is_defending : bool = True):
+        if not is_defending: return
+        new_effect = skc.Butterfly(self)
         env.apply_queue.append(new_effect)
         
     @staticmethod
@@ -4779,7 +4990,17 @@ skc.OnHit(skc.TRodyaMoratium())]], [skc.TRodyaS3CoinPower(), skc.AddXForEachY(0.
 "T Corp. Accelerated Amputator" : Skill((4, 4, 3), 0, "T Corp. Accelerated Amputator", ("Blunt", "Pride"),
 [[skc.OnHit(skc.AddXForEachY(2, 'unit.tremor', 1, 'enemy.tremor', 0, 6))], [], []], [skc.GainTremor(3)]),
 "I Command Thee, Halt!" : Skill((4, 3, 4), 0, "I Command Thee, Halt!", ("Blunt", "Sloth"), [[], [], [], [skc.OnHit(skc.TDonMoratium())]],
-[skc.ConsumeRessourceTrigger('unit.tremor', 10, 10, skc.CoinPower(2))])
+[skc.ConsumeRessourceTrigger('unit.tremor', 10, 10, skc.CoinPower(2))]),
+
+"Celebration for the Departed" : Skill((4, 4, 2), 2, "Celebration for the Departed", ("Pierce", "Pride"), [[*skc.ButterflySangShortcut(1)] for _ in range(2)],
+[skc.DAddXForEachY(1, 'coin_power', 6, GetterMethods.ButterflySinkingSum), skc.ApplyStatusCount('Sinking', 2, condition=0), skc.ButterflySangCondReload()]),
+"Solemn Lament for the Living" : Skill((4, 6, 2), 2, "Solemn Lament for the Living", ("Pierce", "Gloom"), 
+[[*skc.ButterflySangShortcut(5)], [*skc.ButterflySangShortcut(1)]], 
+[skc.DAddXForEachY(1, 'coin_power', 6, GetterMethods.ButterflySinkingSum, 0, 2), skc.ApplyStatusCount('Sinking', 1, condition=0), skc.ButterflySangCondReload()]),
+"Goodbye Now, A Sorrow In You" : Skill((4, 3, 4), 5, "Goodbye Now, A Sorrow In You", ("Pierce", "Sloth"), 
+[[*skc.ButterflySangShortcut(1)], [*skc.ButterflySangShortcut(6)], [skc.ButterflySangS3ConsumeAmmo(), skc.InflictBulletButterfly()], [skc.OnHit(skc.ButterflySangS3Bonus())]],
+[skc.DAddXForEachY(1, 'coin_power', 6, GetterMethods.ButterflySinkingSum, 0, 2), skc.AddXForEachY(1, 'base', 5, GetterMethods.ButterflySangAmmoSum, 0, 4), 
+ skc.ApplyStatusCount('Sinking', 3, condition=0), skc.AfterAttack(skc.ButterflySangReload())])
 }
 ENEMIES = {
     "Test" : Enemy(40, 100, {}, {}),
@@ -4909,5 +5130,6 @@ UNITS = {
     "Zwei Sinclair West" : Unit("Zwei Sinclair West", (gs("Suppressing."), gs("Combat Preparation"), gs("Fence"))),
     "Cinq Meur" : Unit("Cinq Meur", (gs("Allez"), gs("Fente"), gs("Salut"))),
     "T Rodya" : Unit("T Rodya", (gs("Prepare to Collect"), gs("T Corp. Martial Suppression"), gs("Execute Collections"))),
-    "T Don" : Unit("T Don", (gs("Let Us Prepare to Collect"), gs("T Corp. Accelerated Amputator"), gs("I Command Thee, Halt!")))
+    "T Don" : Unit("T Don", (gs("Let Us Prepare to Collect"), gs("T Corp. Accelerated Amputator"), gs("I Command Thee, Halt!"))),
+    "Butterfly Sang" : Unit("Butterfly Sang", (gs("Celebration for the Departed"), gs("Solemn Lament for the Living"), gs("Goodbye Now, A Sorrow In You")))
     }
