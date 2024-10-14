@@ -3458,6 +3458,19 @@ class SpecialSkillEffects:
             state = True
         env.global_state['DevyatRuptureCond'] = state
         env.effects[self] = [state, -1]
+    
+    def FLuRuptureCondCheck_test(self : SkillEffect, env : Environment):
+        state : bool
+        if not env.enemy.has_status('Rupture'):
+            state = False
+        elif env.enemy.statuses['Rupture'].potency < X:
+            state = False
+        elif env.enemy.statuses['Rupture'].count < Y:
+            state = False
+        else:
+            state = True
+        env.global_state['FangLuRuptureCond'] = state
+        env.effects[self] = [state, -1]
         
     def StopRuptureDrain(self : SkillEffect, env : Environment):
         env.CONSUME_RUPTURE = False
@@ -3783,6 +3796,7 @@ class SpecialSkillEffects:
 
 SkillConditional = Callable[[SkillEffect, Environment], bool]
 AnySkillConditional = Union[int, SkillConditional]
+
 class SkillConditionals:
     def __init__(self, method : Callable[[SkillEffect, Environment, dict|None], bool], data : dict) -> None:
         self.eval_func : Callable[[SkillEffect, Environment, dict|None], bool] = method
@@ -3851,6 +3865,25 @@ class SkillConditionals:
     def Enemy6PlusTremor(self : SkillEffect, env : Environment, data = None) -> bool:
         if not env.enemy.has_status('Tremor'): return False
         return env.enemy.statuses['Tremor'].potency >= 6
+    
+    @staticmethod
+    def FLuRuptureCond_test(self : SkillEffect, env : Environment, data=None) -> bool:
+        return env.global_state.get('FangLuRuptureCond', False)
+    
+    @staticmethod
+    def FLuRuptureCondInverted_test(self : SkillEffect, env : Environment, data=None) -> bool:
+        return not env.global_state.get('FangLuRuptureCond', False)
+    
+    @staticmethod
+    def BloodfiendOrBloodbag(self : SkillEffect, env : Environment, data = None) -> bool:
+        return getattr(env.enemy, 'is_bloodfiend', False)
+    
+    @staticmethod
+    def Union(self : SkillEffect, env : Environment, data : dict) -> bool:
+        eval_func : SkillConditional
+        for eval_func in data['methods']:
+            if eval_func(self, env, data) == False: return False 
+        return True
     
 GetterMethod = Callable[[SkillEffect, Environment], float|int|Any]
 SetterMethod = Callable[[SkillEffect, Environment, float|int|Any], None]
@@ -4344,7 +4377,10 @@ class SkillTagNames:
     spends_charge = 'SpendsCharge'
 
 dgt = DamageTypes
-
+X : int = 0
+B : int = 0
+C : int = 0
+Y : int = 0
 SKILLS = {
 "Coerced Judgement" : Skill((8, -2, 2), 5, 'Coerced Judgement', ("Blunt", "Gloom"), [[], [sk.new("OnTailsHit", skc.ApplyFanatic(1))]]),
 "Amoral Enactement" : Skill((16, -4, 4), 5, "Amoral Enactement", ("Blunt", "Lust"), [[], [], [], []], [SkillEffect("dynamic", "add", 0.10, condition=0)]),
@@ -5126,8 +5162,17 @@ skc.ApplyStatusCount('Sinking', 3, condition=0), skc.AfterAttack(skc.ButterflySa
 [skc.GainTremor(3), skc.DAddXForEachY(1, 'coin_power', 5, 'unit.tremor')]),
 "You're the Culprit!" : Skill((3, 3, 4), 4, "You're the Culprit!", ("Pierce", "Gluttony"), [[skc.OnHit(skc.ReverbEntanglement(SkillConditionals.ConsumedTremor))], 
 [skc.OnHit(skc.TremorBurst(1))], [skc.OnHit(skc.TremorBurst(1, SkillConditionals.ConsumedTremor))], [skc.OnHit(skc.TremorBurst(1, SkillConditionals.ConsumedTremor))]],
-[skc.TCorpLuS3CoinPower()])
+[skc.TCorpLuS3CoinPower()]),
+
+"Slam" : Skill((B, C, 2), X, "Slam", ("Blunt", "Gluttony"), 
+[[skc.OnHit(skc.ApplyStatus('Rupture', X)), skc.OnHeadsHit(skc.ApplyStatus('Rupture', X))] for _ in range(2)],
+[skc.DAddXForEachY(1, 'coin_power', X, 'enemy.statuses.Rupture.potency')]),
+"Bonecrusher" : Skill((B, C, 2), "Bonecrusher", ("Blunt", "Pride"),
+[[skc.OnHit(skc.ApplyStatusCount('Rupture', X)), skc.OnHeadsHit(skc.ApplyStatusCount('Rupture', X))], [skc.OnHit(skc.ApplyStatus('Rupture', X))]],
+[skc.ApplyStatusCount('Rupture', X, condition=0)])
 }
+
+
 ENEMIES = {
     "Test" : Enemy(40, 100, {}, {}),
     "Lux" : Enemy(37, 598, {}, {"Lust" : 0.5}, 2),
