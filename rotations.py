@@ -270,7 +270,7 @@ def wdon_rotation(unit : Unit, enemy : Enemy, debug = False, start_charge : int 
         if debug: print(result)
         total += result
         bag.remove(decision)
-        unit.charge -= 1
+        if unit.charge > 0: unit.charge -= 1
 
 
         if len(bag) < 2: 
@@ -304,6 +304,7 @@ def wryo_rotation(unit : Unit, enemy : Enemy, debug : bool = False, start_charge
                 unit.skill_2.set_conds([False])
 
         sequence[i] = str(decision)
+        if debug: print(f"Before attack : {unit.charge} charge")
         result = skills[decision].calculate_damage(unit, enemy, debug=debug)
         if debug: print(result)
         total += result
