@@ -955,6 +955,13 @@ class SkillEffectConstructors:
         return sk.new("ConsumeRessourceTrigger", (name, count, treshold, effect), condition=condition)
 
     @staticmethod
+    def OnUse(other_effect : 'SkillEffect', condition : 'AnySkillConditional' = -1):
+        effect = SkillEffect("dynamic", "add", 0, condition= condition, duration=1)
+        effect.apply = SpecialSkillEffects.on_hit_trigger
+        effect.special_data = other_effect
+        return effect
+
+    @staticmethod
     def OnHit(other_effect : 'SkillEffect', condition : 'AnySkillConditional' = -1):
         effect = SkillEffect("dynamic", "add", 0, condition= condition, duration=1)
         effect.late_update = SpecialSkillEffects.on_hit_trigger
@@ -1467,6 +1474,10 @@ class SkillEffectConstructors:
         return SkillEffect('dynamic', 'add', 0, apply_func=SpecialSkillEffects.DVRRuptureCondCheck)
     
     @staticmethod
+    def FLuRuptureCondCheck_test():
+        return SkillEffect('dynamic', 'add', 0, apply_func=SpecialSkillEffects.FLuRuptureCondCheck_test)
+    
+    @staticmethod
     def StopRuptureDrain(condition : 'AnySkillConditional' = -1):
         return SkillEffect('dynamic', 'add', 0, apply_func=SpecialSkillEffects.StopRuptureDrain, condition=condition)
 
@@ -1636,6 +1647,14 @@ class SkillEffectConstructors:
     @staticmethod
     def TCorpLuS3CoinPower():
         return SkillEffect('dynamic', 'add', 0, apply_func=SpecialSkillEffects.TCorpLuS3CoinPower)
+    
+    @staticmethod
+    def BarberOutisS1Bloodfeast_test():
+        return SkillEffect('dynamic', 'add', 0, apply_func=SpecialSkillEffects.BarberOutisS1Bloodfeast_test)
+    
+    @staticmethod
+    def BarberOutisS2Bloodfeast_test():
+        return SkillEffect('dynamic', 'add', 0, apply_func=SpecialSkillEffects.BarberOutisS2Bloodfeast_test)
 
 def get_dlup_str():
     return f'unit.statuses.{StatusNames.defense_level_up}.count'
@@ -3794,6 +3813,34 @@ class SpecialSkillEffects:
             env.global_state['ConsumedTremor'] = 10
         else: env.global_state['ConsumedTremor'] = 0
 
+    def BarberOutisS1Bloodfeast_test(self : SkillEffect, env : Environment):
+        current_blood : int = env.unit.bloodfeast
+        potential_blood_consumed : int = clamp(current_blood, 0, X)
+        intervals : int = potential_blood_consumed // Z
+        if intervals > 0:
+            blade_gain : int = intervals * Y
+            env.unit.blades += blade_gain
+            blood_consumed : int = intervals * Z
+            env.unit.bloodfeast -= blood_consumed
+            env.unit.total_blood += blood_consumed
+        else:
+            pass
+        env.effects[self] = [0, -1]
+    
+    def BarberOutisS2Bloodfeast_test(self : SkillEffect, env : Environment):
+        current_blood : int = env.unit.bloodfeast
+        potential_blood_consumed : int = clamp(current_blood, 0, X)
+        intervals : int = potential_blood_consumed // Z
+        if intervals > 0:
+            blade_gain : int = intervals * Y
+            env.unit.blades += blade_gain
+            blood_consumed : int = intervals * Z
+            env.unit.bloodfeast -= blood_consumed
+            env.unit.total_blood += blood_consumed
+        else:
+            pass
+        env.effects[self] = [0, -1]
+
 SkillConditional = Callable[[SkillEffect, Environment], bool]
 AnySkillConditional = Union[int, SkillConditional]
 
@@ -3875,8 +3922,15 @@ class SkillConditionals:
         return not env.global_state.get('FangLuRuptureCond', False)
     
     @staticmethod
-    def BloodfiendOrBloodbag(self : SkillEffect, env : Environment, data = None) -> bool:
+    def BloodfiendOrBloodbag_test(self : SkillEffect, env : Environment, data = None) -> bool:
         return getattr(env.enemy, 'is_bloodfiend', False)
+    
+    @staticmethod
+    def FangLuS3Reuse_test(self : SkillEffect, env : Environment, data = None) -> bool:
+        if (getattr(env.enemy, 'hp_percent', None) or (env.enemy.hp / env.enemy.max_hp)) < Y:
+            return True
+        if not env.enemy.has_status("Rupture"): return False
+        return env.enemy.statuses["Rupture"].potency >= X
     
     @staticmethod
     def Union(self : SkillEffect, env : Environment, data : dict) -> bool:
@@ -4381,6 +4435,7 @@ X : int = 0
 B : int = 0
 C : int = 0
 Y : int = 0
+Z : int = 0
 SKILLS = {
 "Coerced Judgement" : Skill((8, -2, 2), 5, 'Coerced Judgement', ("Blunt", "Gloom"), [[], [sk.new("OnTailsHit", skc.ApplyFanatic(1))]]),
 "Amoral Enactement" : Skill((16, -4, 4), 5, "Amoral Enactement", ("Blunt", "Lust"), [[], [], [], []], [SkillEffect("dynamic", "add", 0.10, condition=0)]),
@@ -5168,8 +5223,34 @@ skc.ApplyStatusCount('Sinking', 3, condition=0), skc.AfterAttack(skc.ButterflySa
 [[skc.OnHit(skc.ApplyStatus('Rupture', X)), skc.OnHeadsHit(skc.ApplyStatus('Rupture', X))] for _ in range(2)],
 [skc.DAddXForEachY(1, 'coin_power', X, 'enemy.statuses.Rupture.potency')]),
 "Bonecrusher" : Skill((B, C, 2), "Bonecrusher", ("Blunt", "Pride"),
-[[skc.OnHit(skc.ApplyStatusCount('Rupture', X)), skc.OnHeadsHit(skc.ApplyStatusCount('Rupture', X))], [skc.OnHit(skc.ApplyStatus('Rupture', X))]],
-[skc.ApplyStatusCount('Rupture', X, condition=0)])
+[[skc.OnHit(skc.ApplyStatusCount('Rupture', X, condition=SkillConditionals.FLuRuptureCondInverted_test)), 
+skc.OnHeadsHit(skc.ApplyStatusCount('Rupture', X, condition=SkillConditionals.FLuRuptureCondInverted_test))], 
+[skc.OnHit(skc.ApplyStatus('Rupture', X, condition=SkillConditionals.FLuRuptureCondInverted_test))]],
+#
+[skc.DAddXForEachY(1, 'coin_power', X, 'enemy.statuses.Rupture.potency'),
+skc.FLuRuptureCondCheck_test(), skc.StopRuptureDrain(condition=SkillConditionals.FLuRuptureCond_test),
+skc.CoinPower(1, SkillConditionals.FLuRuptureCond_test), 
+skc.OnUse(skc.CoinPower(1, SkillConditionals.FLuRuptureCond_test), SkillConditionals.BloodfiendOrBloodbag_test),
+skc.OnUse(skc.ApplyStatusCount('Rupture', X, condition=SkillConditionals.FLuRuptureCondInverted_test), condition=0)]),
+"A Cheerful Hunt's End" : Skill((B, C, 3), X, "A Cheerful Hunt's End", ("Blunt", "Wrath"), 
+[[skc.OnHeadsHit(skc.ApplyStatus('Rupture', X, condition=SkillConditionals.FLuRuptureCondInverted_test))], 
+[skc.OnHeadsHit(skc.ApplyStatus('Rupture', X, condition=SkillConditionals.FLuRuptureCondInverted_test))],
+[skc.ReuseCoin(1, condition=SkillConditionals.FangLuS3Reuse_test)]],
+#
+[skc.DAddXForEachY(1, 'coin_power', X, 'enemy.statuses.Rupture.potency'),
+skc.FLuRuptureCondCheck_test(),
+skc.CoinPower(1, SkillConditionals.FLuRuptureCond_test), 
+skc.OnUse(skc.CoinPower(1, SkillConditionals.FLuRuptureCond_test), SkillConditionals.BloodfiendOrBloodbag_test),
+skc.OnUse(skc.ApplyStatusCount('Rupture', X, condition=SkillConditionals.FLuRuptureCondInverted_test), condition=0)]),
+"Sewing" : Skill((B, C, 2), X, "Sewing", ("Slash", "Gluttony"), 
+[[skc.OnHit(skc.ApplyStatus('Bleed', X))], [skc.OnHit(skc.ApplyStatus('Bleed', X))]], 
+[skc.DAddXForEachY(1, 'coin_power', X, 'enemy.statuses.Bleed.potency', 0, Y), skc.BarberOutisS1Bloodfeast_test()]),
+"Scission" : Skill((B, C, 3), X, "Scission", ("Slash", "Lust"), 
+[[skc.OnHit(skc.ApplyStatus('Bleed', X))], [skc.OnHit(skc.ApplyStatus('Bleed', X))], []], 
+[skc.DAddXForEachY(1, 'coin_power', X, 'enemy.statuses.Bleed.potency'), skc.BarberOutisS2Bloodfeast_test()]),
+"I'll Make You a New Dress!" : Skill((B, C, 4), X, "I'll Make You a New Dress!", ("Slash", "Wrath"), 
+[[skc.OnHit(skc.ApplyStatus('Bleed', X))], [skc.OnHit(skc.ApplyStatus('Bleed', X))], [skc.OnHit(skc.ApplyStatus('Bleed', X))], []],
+[skc.DAddXForEachY(1, 'coin_power', X, 'enemy.statuses.Bleed.potency')])
 }
 
 
@@ -5303,5 +5384,7 @@ UNITS = {
     "T Rodya" : Unit("T Rodya", (gs("Prepare to Collect"), gs("T Corp. Martial Suppression"), gs("Execute Collections"))),
     "T Don" : Unit("T Don", (gs("Let Us Prepare to Collect"), gs("T Corp. Accelerated Amputator"), gs("I Command Thee, Halt!"))),
     "Butterfly Sang" : Unit("Butterfly Sang", (gs("Celebration for the Departed"), gs("Solemn Lament for the Living"), gs("Goodbye Now, A Sorrow In You"))),
-    "Yuro Lu" : Unit("Yuro Lu", (gs("Deduction Start"), gs("Morph Cane Technique"), gs("You're the Culprit!")))
+    "Yuro Lu" : Unit("Yuro Lu", (gs("Deduction Start"), gs("Morph Cane Technique"), gs("You're the Culprit!"))),
+    "Fang Lu" : Unit("Fang Lu", (gs("Slam"), gs("Bonecrusher"), gs("A Cheerful Hunt's End"))),
+    "Barber Outis" : Unit("Barber Outis", (gs("Sewing"), gs("Scission"), gs("I'll Make You a New Dress!")))
     }
