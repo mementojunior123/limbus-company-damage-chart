@@ -3952,3 +3952,38 @@ def suncliff_rotation(unit : Unit, enemy : Enemy, debug : bool = False, blunt_da
         enemy.on_turn_end()
     if debug: print("-".join(sequence))
     return total
+
+def fang_lu_rotation(unit : Unit, enemy : Enemy, debug : bool = False, start_rupture : tuple[int, int] = (0,0), is_clashing : bool = True,
+                        passive_active : bool = False, is_bloodfiend : bool = False, hp_percent : float = 1.0):
+    sequence = [None for _ in range(6)]
+    bag = get_bag()
+
+    skills = {1 : unit.skill_1, 2 : unit.skill_2, 3 : unit.skill_3}
+    total = 0
+    enemy.apply_status(backend.StatusNames.rupture, 0,0)
+    rupture_status : backend.StatusEffect = enemy.statuses.get(backend.StatusNames.rupture)
+    rupture_status.potency, rupture_status.count = start_rupture
+    enemy.is_bloodfiend = is_bloodfiend
+    enemy.hp_percent = hp_percent
+    if passive_active:
+        unit.apply_unique_effect('passive', backend.skc.FangLuPassive(), True)
+    unit.skill_2.set_conds([is_clashing])
+    unit.skill_3.set_conds([is_clashing])
+    for i in range(6):
+        dashboard = [bag[0], bag[1]]
+        a = max(dashboard)
+        b = min(dashboard)
+        decision = a
+
+        result = skills[decision].calculate_damage(unit, enemy, debug=debug)
+        total += result
+        
+        if debug: print(result)
+        sequence[i] = str(decision)
+        bag.remove(decision)
+
+        if len(bag) < 2:
+            bag += get_bag()
+    
+    if debug: print("-".join(sequence))
+    return total

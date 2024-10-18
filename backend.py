@@ -1474,8 +1474,8 @@ class SkillEffectConstructors:
         return SkillEffect('dynamic', 'add', 0, apply_func=SpecialSkillEffects.DVRRuptureCondCheck)
     
     @staticmethod
-    def FLuRuptureCondCheck_test():
-        return SkillEffect('dynamic', 'add', 0, apply_func=SpecialSkillEffects.FLuRuptureCondCheck_test)
+    def FLuRuptureCondCheck():
+        return SkillEffect('dynamic', 'add', 0, apply_func=SpecialSkillEffects.FLuRuptureCondCheck)
     
     @staticmethod
     def StopRuptureDrain(condition : 'AnySkillConditional' = -1):
@@ -1655,6 +1655,14 @@ class SkillEffectConstructors:
     @staticmethod
     def BarberOutisS2Bloodfeast_test():
         return SkillEffect('dynamic', 'add', 0, apply_func=SpecialSkillEffects.BarberOutisS2Bloodfeast_test)
+    
+    @staticmethod
+    def FangLuPassive():
+        effect = SkillEffect('dynamic', 'add', 0, apply_func=SpecialSkillEffects.apply_nothing_wduration)
+        effect.mid_update = SpecialSkillEffects.FangLuPassiveMidUpdate
+        effect.late_update = SpecialSkillEffects.FangLuPassiveLateUpdate
+        effect.megalate_update = SpecialSkillEffects.FangLuPassiveMegalateUpdate
+        return effect
 
 def get_dlup_str():
     return f'unit.statuses.{StatusNames.defense_level_up}.count'
@@ -3478,13 +3486,13 @@ class SpecialSkillEffects:
         env.global_state['DevyatRuptureCond'] = state
         env.effects[self] = [state, -1]
     
-    def FLuRuptureCondCheck_test(self : SkillEffect, env : Environment):
+    def FLuRuptureCondCheck(self : SkillEffect, env : Environment):
         state : bool
         if not env.enemy.has_status('Rupture'):
             state = False
-        elif env.enemy.statuses['Rupture'].potency < X:
+        elif env.enemy.statuses['Rupture'].potency < 15:
             state = False
-        elif env.enemy.statuses['Rupture'].count < Y:
+        elif env.enemy.statuses['Rupture'].count < 3:
             state = False
         else:
             state = True
@@ -3813,6 +3821,32 @@ class SpecialSkillEffects:
             env.global_state['ConsumedTremor'] = 10
         else: env.global_state['ConsumedTremor'] = 0
 
+    def FangLuPassiveMidUpdate(self : SkillEffect, env : Environment):
+        dynamic_bonus : float
+        if SkillConditionals.BloodfiendOrBloodbag(self, env):
+            dynamic_bonus = 0.1
+        elif not env.enemy.has_status('Rupture'):
+            dynamic_bonus = 0.0
+        elif env.enemy.statuses['Rupture'].potency >= 10:
+            dynamic_bonus = 0.1
+        else:
+            dynamic_bonus = 0.0
+        env.dynamic += dynamic_bonus
+        env.effects[self][0] = dynamic_bonus
+    
+    def FangLuPassiveLateUpdate(self : SkillEffect, env : Environment):
+        env.global_state['passive_procs_flu'] = env.global_state.get('passive_procs_flu', 0)
+        if env.global_state.get('passive_procs_flu') >= 2: return
+        if getattr(env.unit, 'has_bleed', True) or env.unit.has_status("Bleed"):
+            env.enemy.apply_status('Rupture', 3, 0)
+        env.global_state['passive_procs_flu'] += 1
+    
+    def FangLuPassiveMegalateUpdate(self : SkillEffect, env : Environment):
+        dynamic_bonus =  env.effects[self][0] 
+        env.dynamic -= dynamic_bonus
+        env.effects[self][0] = 0
+        
+
     def BarberOutisS1Bloodfeast_test(self : SkillEffect, env : Environment):
         current_blood : int = env.unit.bloodfeast
         potential_blood_consumed : int = clamp(current_blood, 0, X)
@@ -3914,23 +3948,23 @@ class SkillConditionals:
         return env.enemy.statuses['Tremor'].potency >= 6
     
     @staticmethod
-    def FLuRuptureCond_test(self : SkillEffect, env : Environment, data=None) -> bool:
+    def FLuRuptureCond(self : SkillEffect, env : Environment, data=None) -> bool:
         return env.global_state.get('FangLuRuptureCond', False)
     
     @staticmethod
-    def FLuRuptureCondInverted_test(self : SkillEffect, env : Environment, data=None) -> bool:
+    def FLuRuptureCondInverted(self : SkillEffect, env : Environment, data=None) -> bool:
         return not env.global_state.get('FangLuRuptureCond', False)
     
     @staticmethod
-    def BloodfiendOrBloodbag_test(self : SkillEffect, env : Environment, data = None) -> bool:
+    def BloodfiendOrBloodbag(self : SkillEffect, env : Environment, data = None) -> bool:
         return getattr(env.enemy, 'is_bloodfiend', False)
     
     @staticmethod
-    def FangLuS3Reuse_test(self : SkillEffect, env : Environment, data = None) -> bool:
-        if (getattr(env.enemy, 'hp_percent', None) or (env.enemy.hp / env.enemy.max_hp)) < Y:
+    def FangLuS3Reuse(self : SkillEffect, env : Environment, data = None) -> bool:
+        if (getattr(env.enemy, 'hp_percent', None) or (env.enemy.hp / env.enemy.max_hp)) < 0.3:
             return True
         if not env.enemy.has_status("Rupture"): return False
-        return env.enemy.statuses["Rupture"].potency >= X
+        return env.enemy.statuses["Rupture"].potency >= 15
     
     @staticmethod
     def Union(self : SkillEffect, env : Environment, data : dict) -> bool:
@@ -5219,38 +5253,38 @@ skc.ApplyStatusCount('Sinking', 3, condition=0), skc.AfterAttack(skc.ButterflySa
 [skc.OnHit(skc.TremorBurst(1))], [skc.OnHit(skc.TremorBurst(1, SkillConditionals.ConsumedTremor))], [skc.OnHit(skc.TremorBurst(1, SkillConditionals.ConsumedTremor))]],
 [skc.TCorpLuS3CoinPower()]),
 
-"Slam" : Skill((B, C, 2), X, "Slam", ("Blunt", "Gluttony"), 
-[[skc.OnHit(skc.ApplyStatus('Rupture', X)), skc.OnHeadsHit(skc.ApplyStatus('Rupture', X))] for _ in range(2)],
-[skc.DAddXForEachY(1, 'coin_power', X, 'enemy.statuses.Rupture.potency')]),
-"Bonecrusher" : Skill((B, C, 2), "Bonecrusher", ("Blunt", "Pride"),
-[[skc.OnHit(skc.ApplyStatusCount('Rupture', X, condition=SkillConditionals.FLuRuptureCondInverted_test)), 
-skc.OnHeadsHit(skc.ApplyStatusCount('Rupture', X, condition=SkillConditionals.FLuRuptureCondInverted_test))], 
-[skc.OnHit(skc.ApplyStatus('Rupture', X, condition=SkillConditionals.FLuRuptureCondInverted_test))]],
+"Slam" : Skill((3, 4, 2), 1, "Slam", ("Blunt", "Gluttony"), 
+[[skc.OnHit(skc.ApplyStatus('Rupture', 1)), skc.OnHeadsHit(skc.ApplyStatus('Rupture', 1))] for _ in range(2)],
+[skc.DAddXForEachY(1, 'coin_power', 6, 'enemy.statuses.Rupture.potency')]),
+"Bonecrusher" : Skill((4, 5, 2), 2, "Bonecrusher", ("Blunt", "Pride"),
+[[skc.OnHit(skc.ApplyStatusCount('Rupture', 1, condition=SkillConditionals.FLuRuptureCondInverted)), 
+skc.OnHeadsHit(skc.ApplyStatusCount('Rupture', 1, condition=SkillConditionals.FLuRuptureCondInverted))], 
+[skc.OnHit(skc.ApplyStatus('Rupture', 2, condition=SkillConditionals.FLuRuptureCondInverted))]],
 #
-[skc.DAddXForEachY(1, 'coin_power', X, 'enemy.statuses.Rupture.potency'),
-skc.FLuRuptureCondCheck_test(), skc.StopRuptureDrain(condition=SkillConditionals.FLuRuptureCond_test),
-skc.CoinPower(1, SkillConditionals.FLuRuptureCond_test), 
-skc.OnUse(skc.CoinPower(1, SkillConditionals.FLuRuptureCond_test), SkillConditionals.BloodfiendOrBloodbag_test),
-skc.OnUse(skc.ApplyStatusCount('Rupture', X, condition=SkillConditionals.FLuRuptureCondInverted_test), condition=0)]),
-"A Cheerful Hunt's End" : Skill((B, C, 3), X, "A Cheerful Hunt's End", ("Blunt", "Wrath"), 
-[[skc.OnHeadsHit(skc.ApplyStatus('Rupture', X, condition=SkillConditionals.FLuRuptureCondInverted_test))], 
-[skc.OnHeadsHit(skc.ApplyStatus('Rupture', X, condition=SkillConditionals.FLuRuptureCondInverted_test))],
-[skc.ReuseCoin(1, condition=SkillConditionals.FangLuS3Reuse_test)]],
+[skc.DAddXForEachY(1, 'coin_power', 6, 'enemy.statuses.Rupture.potency'),
+skc.FLuRuptureCondCheck(),
+skc.CoinPower(1, SkillConditionals.FLuRuptureCond), 
+skc.OnUse(skc.CoinPower(1, SkillConditionals.FLuRuptureCond), SkillConditionals.BloodfiendOrBloodbag),
+skc.OnUse(skc.ApplyStatusCount('Rupture', 1, condition=SkillConditionals.FLuRuptureCondInverted), condition=0)]),
+"A Cheerful Hunt's End" : Skill((4, 3, 3), 3, "A Cheerful Hunt's End", ("Blunt", "Wrath"), 
+[[skc.OnHeadsHit(skc.ApplyStatus('Rupture', 1, condition=SkillConditionals.FLuRuptureCondInverted))], 
+[skc.OnHeadsHit(skc.ApplyStatus('Rupture', 2, condition=SkillConditionals.FLuRuptureCondInverted))],
+[skc.ReuseCoin(1, condition=SkillConditionals.FangLuS3Reuse)]],
 #
-[skc.DAddXForEachY(1, 'coin_power', X, 'enemy.statuses.Rupture.potency'),
-skc.FLuRuptureCondCheck_test(),
-skc.CoinPower(1, SkillConditionals.FLuRuptureCond_test), 
-skc.OnUse(skc.CoinPower(1, SkillConditionals.FLuRuptureCond_test), SkillConditionals.BloodfiendOrBloodbag_test),
-skc.OnUse(skc.ApplyStatusCount('Rupture', X, condition=SkillConditionals.FLuRuptureCondInverted_test), condition=0)]),
-"Sewing" : Skill((B, C, 2), X, "Sewing", ("Slash", "Gluttony"), 
-[[skc.OnHit(skc.ApplyStatus('Bleed', X))], [skc.OnHit(skc.ApplyStatus('Bleed', X))]], 
-[skc.DAddXForEachY(1, 'coin_power', X, 'enemy.statuses.Bleed.potency', 0, Y), skc.BarberOutisS1Bloodfeast_test()]),
-"Scission" : Skill((B, C, 3), X, "Scission", ("Slash", "Lust"), 
-[[skc.OnHit(skc.ApplyStatus('Bleed', X))], [skc.OnHit(skc.ApplyStatus('Bleed', X))], []], 
-[skc.DAddXForEachY(1, 'coin_power', X, 'enemy.statuses.Bleed.potency'), skc.BarberOutisS2Bloodfeast_test()]),
-"I'll Make You a New Dress!" : Skill((B, C, 4), X, "I'll Make You a New Dress!", ("Slash", "Wrath"), 
-[[skc.OnHit(skc.ApplyStatus('Bleed', X))], [skc.OnHit(skc.ApplyStatus('Bleed', X))], [skc.OnHit(skc.ApplyStatus('Bleed', X))], []],
-[skc.DAddXForEachY(1, 'coin_power', X, 'enemy.statuses.Bleed.potency')])
+[skc.DAddXForEachY(1, 'coin_power', 6, 'enemy.statuses.Rupture.potency'),
+skc.FLuRuptureCondCheck(),
+skc.CoinPower(1, SkillConditionals.FLuRuptureCond), 
+skc.OnUse(skc.CoinPower(1, SkillConditionals.FLuRuptureCond), SkillConditionals.BloodfiendOrBloodbag),
+skc.OnUse(skc.ApplyStatusCount('Rupture', 2, condition=SkillConditionals.FLuRuptureCondInverted), condition=0)]),
+"Sewing" : Skill((3, 4, 2), 1, "Sewing", ("Slash", "Gluttony"), 
+[[skc.OnHit(skc.ApplyStatus('Bleed', 1))], [skc.OnHit(skc.ApplyStatus('Bleed', 1))]], 
+[skc.DAddXForEachY(1, 'coin_power', 6, 'enemy.statuses.Bleed.potency', 0, 2), skc.BarberOutisS1Bloodfeast_test()]),
+"Scission" : Skill((4, 4, 3), 3, "Scission", ("Slash", "Lust"), 
+[[skc.OnHit(skc.ApplyStatus('Bleed', 1))], [skc.OnHit(skc.ApplyStatus('Bleed', 1))], []], 
+[skc.DAddXForEachY(1, 'coin_power', 6, 'enemy.statuses.Bleed.potency'), skc.BarberOutisS2Bloodfeast_test()]),
+"I'll Make You a New Dress!" : Skill((3, 3, 4), 5, "I'll Make You a New Dress!", ("Slash", "Wrath"), 
+[[skc.OnHit(skc.ApplyStatus('Bleed', 2))], [skc.OnHit(skc.ApplyStatus('Bleed', 2))], [skc.OnHit(skc.ApplyStatus('Bleed', 2))], []],
+[skc.DAddXForEachY(1, 'coin_power', 5, 'enemy.statuses.Bleed.potency')])
 }
 
 
