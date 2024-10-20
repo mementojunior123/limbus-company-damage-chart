@@ -3965,6 +3965,7 @@ def fang_lu_rotation(unit : Unit, enemy : Enemy, debug : bool = False, start_rup
     rupture_status.potency, rupture_status.count = start_rupture
     enemy.is_bloodfiend = is_bloodfiend
     enemy.hp_percent = hp_percent
+    unit.has_bleed = passive_active
     if passive_active:
         unit.apply_unique_effect('passive', backend.skc.FangLuPassive(), True)
     unit.skill_2.set_conds([is_clashing])
@@ -3974,7 +3975,7 @@ def fang_lu_rotation(unit : Unit, enemy : Enemy, debug : bool = False, start_rup
         a = max(dashboard)
         b = min(dashboard)
         decision = a
-
+        if debug: print(f'Before attack : {rupture_status.potency}x{rupture_status.count} rupture')
         result = skills[decision].calculate_damage(unit, enemy, debug=debug)
         total += result
         
@@ -3984,6 +3985,63 @@ def fang_lu_rotation(unit : Unit, enemy : Enemy, debug : bool = False, start_rup
 
         if len(bag) < 2:
             bag += get_bag()
+    
+    if debug: print("-".join(sequence))
+    return total
+
+def barber_outis_rotation(unit : Unit, enemy : Enemy, debug : bool = False, start_bleed : tuple[int, int] = (0,0), passive_frequency : float = -1, max_AOE : int = 1,
+                          bleed_drain : int = 0, blood_start : int = 0, blood_consumed_start : int = 0, blades_start : int = 0, blood_income : int|None = 0):
+    sequence = [None for _ in range(6)]
+    bag = get_bag()
+
+    skills = {1 : unit.skill_1, 2 : unit.skill_2, 3 : unit.skill_3}
+    total = 0
+    enemy.apply_status('Bleed', 0, 0)
+    the_bleed = enemy.statuses['Bleed']
+    the_bleed.potency, the_bleed.count = start_bleed
+
+    enemy.apply_status(backend.StatusNames.sewing_target, 0, 0)
+    enemy.statuses[backend.StatusNames.sewing_target].count = 0
+
+    unit.blades = blades_start
+    unit.bloodfeast = blood_start
+    unit.total_blood = blood_consumed_start
+    passive : backend.SkillEffect = backend.skc.BarberOutisPassive()
+    actual_AOE : int
+    for i in range(6):
+        unit.on_turn_start()
+        enemy.on_turn_start()
+        unit.atk_weight = 1
+        dashboard = [bag[0], bag[1]]
+        a = max(dashboard)
+        b = min(dashboard)
+        decision = a
+
+        if unit.blades >= 10:
+            result = skills[decision].calculate_damage(unit, enemy, debug=debug, entry_effects=[passive, backend.skc.OffenseLevelUp(unit.blades // 5)] 
+                                                       if passive_frequency >= random() else None)
+        else:
+            result = skills[decision].calculate_damage(unit, enemy, debug=debug, entry_effects=[passive] if passive_frequency >= random() else None)
+        actual_AOE = min(unit.atk_weight, max_AOE)
+        total += result * actual_AOE
+        
+        if debug: print(f'{result} (*{actual_AOE})')
+        sequence[i] = str(decision)
+        bag.remove(decision)
+
+        
+        
+        if len(bag) < 2:
+            bag += get_bag()
+        
+        enemy.on_turn_end()
+        unit.on_turn_end()
+        if blood_income is not None:
+            unit.bloodfeast += blood_income
+        else:
+            total_bleed_count_consumed : int = backend.clamp(bleed_drain, 0, the_bleed.count)
+            unit.bloodfeast += the_bleed.potency * total_bleed_count_consumed
+        the_bleed.consume_count(bleed_drain)
     
     if debug: print("-".join(sequence))
     return total

@@ -1649,12 +1649,33 @@ class SkillEffectConstructors:
         return SkillEffect('dynamic', 'add', 0, apply_func=SpecialSkillEffects.TCorpLuS3CoinPower)
     
     @staticmethod
-    def BarberOutisS1Bloodfeast_test():
-        return SkillEffect('dynamic', 'add', 0, apply_func=SpecialSkillEffects.BarberOutisS1Bloodfeast_test)
+    def BarberOutisS1Bloodfeast():
+        return SkillEffect('dynamic', 'add', 0, apply_func=SpecialSkillEffects.BarberOutisS1Bloodfeast)
     
     @staticmethod
-    def BarberOutisS2Bloodfeast_test():
-        return SkillEffect('dynamic', 'add', 0, apply_func=SpecialSkillEffects.BarberOutisS2Bloodfeast_test)
+    def BarberOutisS2Bloodfeast():
+        return SkillEffect('dynamic', 'add', 0, apply_func=SpecialSkillEffects.BarberOutisS2Bloodfeast)
+    
+    @staticmethod
+    def BarberOutisS3Bonus():
+        return SkillEffect('dynamic', 'add', 0, apply_func=SpecialSkillEffects.BarberOutisS3Bonus)
+    
+    @staticmethod
+    def BarberOutisS3AtkWeight():
+        return SkillEffect('dynamic', 'add', 0, apply_func=SpecialSkillEffects.BarberOutisS3AtkWeight)
+    
+    @staticmethod
+    def BarberOutisResetAtkWeight():
+        return SkillEffect('dynamic', 'add', 0, apply_func=SpecialSkillEffects.BarberOutisResetAtkWeight)
+    
+    @staticmethod
+    def BarberOutisPassive():
+        effect = SkillEffect('dynamic', 'add', 0, apply_func=SpecialSkillEffects.apply_nothing_wduration)
+        effect.early_update = SpecialSkillEffects.BarberOutisPassiveEarlyUpdate
+        effect.megalate_update = SpecialSkillEffects.d_add_foreach_y_cleanup
+        return effect
+    
+
     
     @staticmethod
     def FangLuPassive():
@@ -3837,7 +3858,7 @@ class SpecialSkillEffects:
     def FangLuPassiveLateUpdate(self : SkillEffect, env : Environment):
         env.global_state['passive_procs_flu'] = env.global_state.get('passive_procs_flu', 0)
         if env.global_state.get('passive_procs_flu') >= 2: return
-        if getattr(env.unit, 'has_bleed', True) or env.unit.has_status("Bleed"):
+        if getattr(env.unit, 'has_bleed', False) or env.unit.has_status("Bleed"):
             env.enemy.apply_status('Rupture', 3, 0)
         env.global_state['passive_procs_flu'] += 1
     
@@ -3847,36 +3868,82 @@ class SpecialSkillEffects:
         env.effects[self][0] = 0
         
 
-    def BarberOutisS1Bloodfeast_test(self : SkillEffect, env : Environment):
+    def BarberOutisS1Bloodfeast(self : SkillEffect, env : Environment):
         current_blood : int = env.unit.bloodfeast
-        potential_blood_consumed : int = clamp(current_blood, 0, X)
-        intervals : int = potential_blood_consumed // Z
+        potential_blood_consumed : int = clamp(current_blood, 0, 40)
+        intervals : int = potential_blood_consumed // 8
         if intervals > 0:
-            blade_gain : int = intervals * Y
+            blade_gain : int = intervals * 1
             env.unit.blades += blade_gain
-            blood_consumed : int = intervals * Z
+            if env.unit.blades > 30: env.unit.blades = 30
+            blood_consumed : int = intervals * 8
             env.unit.bloodfeast -= blood_consumed
             env.unit.total_blood += blood_consumed
         else:
             pass
         env.effects[self] = [0, -1]
     
-    def BarberOutisS2Bloodfeast_test(self : SkillEffect, env : Environment):
+    def BarberOutisS2Bloodfeast(self : SkillEffect, env : Environment):
         current_blood : int = env.unit.bloodfeast
-        potential_blood_consumed : int = clamp(current_blood, 0, X)
-        intervals : int = potential_blood_consumed // Z
+        potential_blood_consumed : int = clamp(current_blood, 0, 60)
+        intervals : int = potential_blood_consumed // 6
         if intervals > 0:
-            blade_gain : int = intervals * Y
+            blade_gain : int = intervals * 1
             env.unit.blades += blade_gain
-            blood_consumed : int = intervals * Z
+            if env.unit.blades > 30: env.unit.blades = 30
+            blood_consumed : int = intervals * 6
             env.unit.bloodfeast -= blood_consumed
             env.unit.total_blood += blood_consumed
         else:
             pass
         env.effects[self] = [0, -1]
 
+    def BarberOutisS3Bonus(self : SkillEffect, env : Environment):
+        dynamic_bonus : float
+        if env.unit.blades >= 20:
+            dynamic_bonus = clamp(env.unit.blades * 0.04, 0, 1.2)
+        elif env.unit.blades >= 10:
+            dynamic_bonus = clamp(env.unit.blades * 0.03, 0, 0.57)
+        else:
+            dynamic_bonus = 0
+        env.dynamic += dynamic_bonus
+        env.effects[self] = [dynamic_bonus, -1]
+    
+    def BarberOutisS3AtkWeight(self : SkillEffect, env : Environment):
+        env.unit.atk_weight = 1
+        blades_to_consume : int = 0
+        if env.unit.blades >= 10:
+            env.unit.atk_weight += 1
+            blades_to_consume += 10
+        if env.unit.blades >= 20:
+            env.unit.atk_weight += 1
+            blades_to_consume += 10
+        env.effects[self] = [env.unit.atk_weight, -1]
+        env.global_state['BladeToConsume'] = blades_to_consume
+    
+    def BarberOutisResetAtkWeight(self : SkillEffect, env : Environment):
+        blades_consumed : int = env.global_state['BladeToConsume']
+        env.unit.blades -= blades_consumed
+        if env.unit.blades < 1: env.unit.blades = 1
+        env.effects[self] = [0, -1]
+    
+
+    def BarberOutisPassiveEarlyUpdate(self : SkillEffect, env : Environment):
+        dynamic_bonus : float = clamp(0.015 * (env.unit.total_blood // 10), 0, 0.3)
+        if env.enemy.has_status('Bleed'):
+            dynamic_bonus += clamp(0.005 * env.enemy.statuses['Bleed'].potency, 0, 0.1)
+        env.dynamic += dynamic_bonus
+        env.effects[self][0] = dynamic_bonus
+
 SkillConditional = Callable[[SkillEffect, Environment], bool]
 AnySkillConditional = Union[int, SkillConditional]
+
+class SkillConditionalConstructors:
+    @staticmethod
+    def has_sewing_target():
+        return SkillConditionals(SkillConditionals.has_status, {"StatusName" : StatusNames.sewing_target})
+
+scc = SkillConditionalConstructors
 
 class SkillConditionals:
     def __init__(self, method : Callable[[SkillEffect, Environment, dict|None], bool], data : dict) -> None:
@@ -3885,7 +3952,18 @@ class SkillConditionals:
 
     def __call__(self, effect : SkillEffect, env : Environment, *args, **kwargs) -> bool:
         return self.eval_func(effect, env, self.data)
+    
+    @staticmethod
+    def has_status(self : SkillEffect, env : Environment, data : dict) -> bool:
+        return env.enemy.has_status(data['StatusName'])
 
+    @staticmethod
+    def Union(self : SkillEffect, env : Environment, data : dict) -> bool:
+        eval_func : SkillConditional
+        for eval_func in data['methods']:
+            if eval_func(self, env, data) == False: return False 
+        return True
+    
     @staticmethod
     def HasEgoHeadsHit(self : SkillEffect, env : Environment, data = None) -> bool:
         if getattr(env.unit, 'ego', False) and env.sequence[env.current_coin_index] == "Heads":
@@ -3966,12 +4044,7 @@ class SkillConditionals:
         if not env.enemy.has_status("Rupture"): return False
         return env.enemy.statuses["Rupture"].potency >= 15
     
-    @staticmethod
-    def Union(self : SkillEffect, env : Environment, data : dict) -> bool:
-        eval_func : SkillConditional
-        for eval_func in data['methods']:
-            if eval_func(self, env, data) == False: return False 
-        return True
+    
     
 GetterMethod = Callable[[SkillEffect, Environment], float|int|Any]
 SetterMethod = Callable[[SkillEffect, Environment, float|int|Any], None]
@@ -4044,6 +4117,7 @@ class StatusNames:
 
     nails = "Nails"
     gaze = "Gaze"
+    sewing_target = 'Sewing Target'
     
 class StatusEffect:
     @classmethod
@@ -4149,6 +4223,11 @@ class StatusEffect:
                 new_effect._max_count = 1
                 new_effect.on_skill_start = SpecialStatusEffects.apply_gaze
                 new_effect.on_turn_end = SpecialStatusEffects.consume_all
+            case StatusNames.sewing_target:
+                new_effect._has_potency = False
+                new_effect._max_count = 1
+                new_effect.on_turn_end = SpecialStatusEffects.drain_count
+                new_effect.on_skill_start = SpecialStatusEffects.apply_sewing_target
             case 'Fanatic':
                 new_effect._has_potency = False
                 new_effect.on_skill_start = SpecialStatusEffects.apply_fanatic
@@ -4383,6 +4462,11 @@ class SpecialStatusEffects:
     def apply_fragile(self : 'StatusEffect', env : Environment, is_defending : bool = True):
         if not is_defending: return
         new_effect = skc.Fragile(self.count, self)
+        env.apply_queue.append(new_effect)
+    
+    def apply_sewing_target(self : 'StatusEffect', env : Environment, is_defending : bool = True):
+        if not is_defending: return
+        new_effect = skc.DAddXForEachY(0.005, 'dynamic', 1, 'enemy.statuses.Bleed.potency', 0, 0.1)
         env.apply_queue.append(new_effect)
     
     @staticmethod
@@ -5276,15 +5360,17 @@ skc.FLuRuptureCondCheck(),
 skc.CoinPower(1, SkillConditionals.FLuRuptureCond), 
 skc.OnUse(skc.CoinPower(1, SkillConditionals.FLuRuptureCond), SkillConditionals.BloodfiendOrBloodbag),
 skc.OnUse(skc.ApplyStatusCount('Rupture', 2, condition=SkillConditionals.FLuRuptureCondInverted), condition=0)]),
+
 "Sewing" : Skill((3, 4, 2), 1, "Sewing", ("Slash", "Gluttony"), 
-[[skc.OnHit(skc.ApplyStatus('Bleed', 1))], [skc.OnHit(skc.ApplyStatus('Bleed', 1))]], 
-[skc.DAddXForEachY(1, 'coin_power', 6, 'enemy.statuses.Bleed.potency', 0, 2), skc.BarberOutisS1Bloodfeast_test()]),
+[[skc.OnHit(skc.ApplyStatus('Bleed', 1)), skc.OnHit(skc.ApplyStatusCount('Bleed', 1, condition=scc.has_sewing_target()))] for _ in range(2)], 
+[skc.DAddXForEachY(1, 'coin_power', 6, 'enemy.statuses.Bleed.potency', 0, 2), skc.BarberOutisS1Bloodfeast()]),
 "Scission" : Skill((4, 4, 3), 3, "Scission", ("Slash", "Lust"), 
-[[skc.OnHit(skc.ApplyStatus('Bleed', 1))], [skc.OnHit(skc.ApplyStatus('Bleed', 1))], []], 
-[skc.DAddXForEachY(1, 'coin_power', 6, 'enemy.statuses.Bleed.potency'), skc.BarberOutisS2Bloodfeast_test()]),
+[[skc.OnHit(skc.ApplyStatus('Bleed', 1)), skc.OnHit(skc.ApplyStatus('Bleed', 2, condition=scc.has_sewing_target()))] for _ in range(2)] + \
+[[skc.OnHit(skc.ApplyStatusCountNextTurn(StatusNames.sewing_target, 1))]], 
+[skc.DAddXForEachY(1, 'coin_power', 6, 'enemy.statuses.Bleed.potency'), skc.BarberOutisS2Bloodfeast()]),
 "I'll Make You a New Dress!" : Skill((3, 3, 4), 5, "I'll Make You a New Dress!", ("Slash", "Wrath"), 
-[[skc.OnHit(skc.ApplyStatus('Bleed', 2))], [skc.OnHit(skc.ApplyStatus('Bleed', 2))], [skc.OnHit(skc.ApplyStatus('Bleed', 2))], []],
-[skc.DAddXForEachY(1, 'coin_power', 5, 'enemy.statuses.Bleed.potency')])
+[[skc.OnHit(skc.ApplyStatus('Bleed', 2))], [skc.OnHit(skc.ApplyStatus('Bleed', 2))], [skc.OnHit(skc.ApplyStatus('Bleed', 2))], [skc.BarberOutisS3Bonus()]],
+[skc.DAddXForEachY(1, 'coin_power', 5, 'enemy.statuses.Bleed.potency'), skc.BarberOutisS3AtkWeight(), skc.AfterAttack(skc.BarberOutisResetAtkWeight())])
 }
 
 
