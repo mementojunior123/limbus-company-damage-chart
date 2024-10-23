@@ -3203,7 +3203,7 @@ def mariachi_rotation(unit : Unit, enemy : Enemy, debug : bool = False, poise : 
     return total
 
 def heir_gregor_rotation(unit : Unit, enemy : Enemy, debug : bool = False, enemy_sinking : tuple[int, int] = (0,0), passive_frequency : float = 0,
-                         sp_variation : int = 0, start_sp : int = 45):
+                         sp_variation : int = 0, start_sp : int = 45, clash_count : int = 2):
     sequence = [None for _ in range(6)]
     bag = get_bag()
 
@@ -3230,7 +3230,8 @@ def heir_gregor_rotation(unit : Unit, enemy : Enemy, debug : bool = False, enemy
         sp_difference_chunks : int = backend.clamp(abs(unit.sp - prev_sp) // 5, 0, 5)
         passive2 : backend.StatusEffect = backend.skc.DamageUp(sp_difference_chunks)
         prev_sp = unit.sp
-        
+        unit.sp += 0 if not clash_count else 10 + 2 * (clash_count - 1)
+        unit.clamp_sp()
         result = skills[decision].calculate_damage(unit, enemy, debug=debug, entry_effects=None if random() > passive_frequency else [passive1, passive2])
         total += result
         
