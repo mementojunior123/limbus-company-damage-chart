@@ -4793,7 +4793,7 @@ SkillEffect('unit.coffin', 'add', 1), SkillEffect('unit.coffin', 'add', 3, condi
  skc.AddXForEachY(0.2, 'dynamic', 1, 'unit.horse', 0, 0.6), SkillEffect('unit.coffin', 'add', 2), SkillEffect('unit.coffin', 'add', 4, condition=0)]),
 
 "Rip(Meursault)" : Skill((5, 6, 1), 0, "Rip(Meursault)", ("Slash", "Envy"), [[skc.OnHit(skc.GainCharge(3))]], [skc.GainCharge(3)]),
-"Energy Cycle" : Skill((5, 2, 3), 0, "Energy Cycle", ("Slash", "Gloom"), [[], [], [skc.OnHit(skc.ConsumeCharge(3))]], 
+"Energy Cycle(Meursault)" : Skill((5, 2, 3), 0, "Energy Cycle(Meursault)", ("Slash", "Gloom"), [[], [], [skc.OnHit(skc.ConsumeCharge(3))]], 
                        [skc.DAddXForEachY(1, 'coin_power', 5, 'unit.charge', 0, 1)]),
 "Energy Current" : Skill((5, 2, 4), 0, "Energy Current", ("Slash", "Pride"), [[skc.OnHit(skc.ConsumeChargeTrigger(2, skc.OffenseLevelUp(2)))] for _ in range(4)],
                          [skc.DAddXForEachY(1, 'coin_power', 5, 'unit.charge', 0, 1)]),
@@ -5424,7 +5424,7 @@ UNITS = {
     "Liu Rodya" : Unit("Liu Rodya", (gs("Flaming Fists"), gs("Fiery Knifehand-Combust"), gs("Pinpoint Blitz"))),
     "Bl Sang" : Unit("Bl Sang", (gs("Striker's Stance"), gs("Heel Turn"), gs("Flank Trust"))),
     "Wild Cliff" : Unit("Wild Cliff", (gs("Beheading"), gs("Memorial Procession"), gs("Requiem"), gs("O Dullahan…!"), gs("Lament, Mourn, and Despair"))),
-    "W Meur" : Unit("W Meur", (gs("Rip(Meursault)"), gs("Energy Cycle"), gs("Energy Current"))),
+    "W Meur" : Unit("W Meur", (gs("Rip(Meursault)"), gs("Energy Cycle(Meursault)"), gs("Energy Current"))),
     "W Faust" : Unit("W Faust", (gs("Energy Cycle"), gs("Leap(Faust)"), gs("Overcharge"))),
     "MC Heath" : Unit("MC Heath", (gs("40S-2 Activation"), gs("Photoelectric Mark"), gs("Photoelectric Harpoon"))),
     "Peq Sang" : Unit("Peq Sang", (gs("Impale"), gs("Relentless Stabbing"), gs("Ambush"))),
