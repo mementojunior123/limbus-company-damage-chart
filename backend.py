@@ -1684,6 +1684,10 @@ class SkillEffectConstructors:
         effect.late_update = SpecialSkillEffects.FangLuPassiveLateUpdate
         effect.megalate_update = SpecialSkillEffects.FangLuPassiveMegalateUpdate
         return effect
+    
+    @staticmethod
+    def FixedDamage(damage : int):
+        return SkillEffect('total', 'add', damage, apply_func=SpecialSkillEffects.FixedDamage)
 
 def get_dlup_str():
     return f'unit.statuses.{StatusNames.defense_level_up}.count'
@@ -3934,6 +3938,12 @@ class SpecialSkillEffects:
             dynamic_bonus += clamp(0.005 * env.enemy.statuses['Bleed'].potency, 0, 0.1)
         env.dynamic += dynamic_bonus
         env.effects[self][0] = dynamic_bonus
+    
+    def FixedDamage(self : SkillEffect, env : Environment):
+        if not env.ignore_fixed_damage:
+            env.total += self.value
+        env.enemy.take_damage(self.value, env)
+        env.effects[self] = [self.value, -1]
 
 SkillConditional = Callable[[SkillEffect, Environment], bool]
 AnySkillConditional = Union[int, SkillConditional]
@@ -3953,6 +3963,14 @@ class SkillConditionals:
     def __call__(self, effect : SkillEffect, env : Environment, *args, **kwargs) -> bool:
         return self.eval_func(effect, env, self.data)
     
+    @staticmethod
+    def IncludeFixedDamage(self : SkillEffect, env : Environment) -> bool:
+        return not env.ignore_fixed_damage
+    
+    @staticmethod
+    def IgnoreFixedDamage(self : SkillEffect, env : Environment) -> bool:
+        return env.ignore_fixed_damage
+
     @staticmethod
     def has_status(self : SkillEffect, env : Environment, data : dict) -> bool:
         return env.enemy.has_status(data['StatusName'])
@@ -4570,9 +4588,10 @@ SKILLS = {
 
 
 "Graze The Grass" : Skill((4, 2, 3), 5, "Graze The Grass", ("Pierce", "Wrath"), [[], [], []]),
-"Concentrated Fire" : Skill((4, 2, 4), 5, "Concentrated Fire", ("Pierce", "Gluttony"), [[], [], [], []], [sk.new("CoinPower", 1, condition=0)]),
+"Concentrated Fire" : Skill((4, 2, 4), 5, "Concentrated Fire", ("Pierce", "Gluttony"), [[], [], [], []], 
+[skc.AddXForEachY(1, 'coin_power', 6, 'unit.speed')]),
 "Quick Suppression" : Skill((3, 2, 5), 5, "Quick Suppression", ("Pierce", "Envy"),
-[[sk.new("Fragile", 2)], [sk.new("Fragile", 2)], [], [], []], [sk.new("CoinPower", 2, condition=0)]),
+[[sk.new("Fragile", 2)], [sk.new("Fragile", 2)], [], [], []], [skc.AddXForEachY(2, 'coin_power', 6, 'unit.speed', 0, 2)]),
 
 
 "Mind Strike" : Skill((4, 5, 2), 1, "Mind Strike", ("Blunt", "Gloom"), 
@@ -4653,9 +4672,11 @@ SKILLS = {
 'DDEDR' : Skill((3, 2, 4), 5, "DDEDR", ('Slash', 'Lust'), [[], [], [], [sk.new("DDEDRLastCoinBouns", None)]], [sk.new('DDEDRCoinPowerBonus', None)]),
 
 'Throat Slit': Skill((5, 8, 1), 3, 'Throat Slit', ('Slash', 'Envy'), [[]]),
-'Shank' : Skill((3, 5, 3), 3, 'Shank', ('Pierce', 'Lust'), [[], [], [sk.new("ShankDamageBonus", None), sk.new("OnHeadsHit", sk.new("ReuseCoin", 1), condition=0)]]),
+'Shank' : Skill((3, 5, 3), 3, 'Shank', ('Pierce', 'Lust'), 
+[[skc.OnHeadsHit(skc.FixedDamage(3))], [skc.OnHeadsHit(skc.FixedDamage(3))], 
+ [sk.new("ShankDamageBonus", None), sk.new("OnHeadsHit", sk.new("ReuseCoin", 1), condition=0)]]),
 'Mutilate' : Skill((5, 25, 1), 3, 'Mutilate', ('Slash', 'Gluttony'), 
-[[sk.new("OnHeadsRoll", sk('dynamic', 'add', 1), condition=0), 
+[[skc.OnHeadsHit(skc.FixedDamage(7)), sk.new("OnHeadsRoll", sk('dynamic', 'add', 1), condition=0), 
 sk.new("OnHeadsRoll", sk.new("AddXForEachY", (0.5, "dynamic", 10, "enemy.statuses.Bleed.potency", (0, 0.5))), condition=0)]]),
 
 "Draw of the Sword" : Skill((3, 4, 2), 3, "Draw of the Sword", ('Slash', 'Pride'), 

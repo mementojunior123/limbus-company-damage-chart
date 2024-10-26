@@ -399,10 +399,10 @@ def rcliff_rotation(unit : Unit, enemy : Enemy, debug : bool = False, qs_patienc
         dashboard = [bag[0], bag[1]]
         a = max(dashboard)
         b = min(dashboard)
-        speed = randint(min_speed_rng, max_speed_rng) + current_haste
+        unit.speed = randint(min_speed_rng, max_speed_rng) + current_haste
         if current_atk_powerup:
             power_bonus = backend.SkillEffect.new("BasePower", current_atk_powerup)
-            unit.apply_effect(power_bonus)
+            #unit.apply_effect(power_bonus)
         current_atk_powerup = 0
         current_haste = 0
 
@@ -415,7 +415,7 @@ def rcliff_rotation(unit : Unit, enemy : Enemy, debug : bool = False, qs_patienc
             if bag[2] == 3:
                 if dashboard[0] == 1:
                     decision = 'Bodysack'
-                elif dashboard[0] == 2 and speed < 6 and b == 2:
+                elif dashboard[0] == 2 and unit.speed < 6 and b == 2:
                     decision = 'Bodysack'
                 else:
                     decision = a
@@ -423,7 +423,7 @@ def rcliff_rotation(unit : Unit, enemy : Enemy, debug : bool = False, qs_patienc
                 decision = a
         
         elif a == 3:
-            if speed >= 6:
+            if unit.speed >= 6:
                 decision = a
             elif dashboard[0] == 3:
                 qs_patience -= 1
@@ -434,22 +434,6 @@ def rcliff_rotation(unit : Unit, enemy : Enemy, debug : bool = False, qs_patienc
 
             elif dashboard[1] == 3:
                 decision = 'Bodysack'
-
-
-        if decision == 1:
-            pass
-
-        elif decision == 2:
-            if speed >= 6:
-                unit.skill_2.set_conds([True])
-            else:
-                unit.skill_2.set_conds([False])
-
-        elif decision == 3:
-            if speed >= 6:
-                unit.skill_3.set_conds([True])
-            else:
-                unit.skill_3.set_conds([False])
 
         
         if decision == 'Bodysack':
@@ -704,7 +688,7 @@ def ttlu_rotation(unit : Unit, enemy : Enemy, debug : bool = False, shank_reuse_
                 unit.skill_2.set_conds([True])
             else:
                 unit.skill_2.set_conds([False])
-        result = skills[decision].calculate_damage(unit, enemy, debug=debug)
+        result = skills[decision].calculate_damage(unit, enemy, debug=debug, ignore_fixed_damage=False)
         total += result
         
         if debug: print(result)
@@ -3635,7 +3619,7 @@ def cinq_meur_rotation(unit : Unit, enemy : Enemy, debug : bool = False,
             start_poise : tuple[int, int] = (0,0), 
             start_rupture : tuple[int, int] = (0,0),
             unit_speed : tuple[int, int] = (4, 7), enemy_speed : tuple[int, int] = (2, 4), 
-            passive : bool = False, focusing : bool = True, start_focus : int = 0,):
+            passive : bool = False, focusing : bool = True, start_focus : int = 0, reuse_s3 : bool = False):
     sequence = [None for _ in range(6)]
     bag = get_bag()
 
@@ -3666,13 +3650,19 @@ def cinq_meur_rotation(unit : Unit, enemy : Enemy, debug : bool = False,
         else:
             entry_effects = [backend.skc.BasePowerUp(1), backend.skc.CoinPower(1)]
         
-        print(f'Before attack : {rupture_status.potency}x{rupture_status.count} rupture, {enemy.meur_focus} focused attack')
+        if debug: print(f'Before attack : {rupture_status.potency}x{rupture_status.count} rupture, {enemy.meur_focus} focused attack')
         result = skills[decision].calculate_damage(unit, enemy, debug=debug, entry_effects=entry_effects)
         total += result
-        
         if debug: print(result)
         sequence[i] = str(decision)
         bag.remove(decision)
+        if decision == 3 and reuse_s3:
+            if debug: print(f'Before attack : {rupture_status.potency}x{rupture_status.count} rupture, {enemy.meur_focus} focused attack')
+            result = skills[decision].calculate_damage(unit, enemy, debug=debug, entry_effects=entry_effects)
+            total += result
+            if debug: print(result)
+            sequence[i] = '3(reuse)'
+        
 
         
         
