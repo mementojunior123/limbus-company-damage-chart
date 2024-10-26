@@ -5192,7 +5192,7 @@ skc.DAddXForEachY(0.02, 'dynamic', 1, 'unit.trunk', 0, 0.4), skc.DevyatRodyaCoin
 "I Trust Ya, Polu!" : Skill((5, 4, 3), 4, "I Trust Ya, Polu!", ("Slash", "Gluttony"), 
 [[], [skc.OnHit(skc.ApplyStatusCount('Rupture', 3, condition=SkillConditionals.DevRodyaRuptureCondInverted)), 
 skc.OnHit(skc.AddStatusCountForEachY(1, 'Rupture', 10, 'unit.trunk', 0, 2, condition=SkillConditionals.DevRodyaRuptureCondInverted))],
-[skc.ReuseCoin(1, SkillConditionals.DevRodyaRuptureCond), skc.AddXForEachY(0.25, 'dynamic', 15, 'unit.trunk', 0, 0.25)]],
+[skc.ReuseCoin(1, SkillConditionals.DevRodyaRuptureCond), skc.AddXForEachY(0.25, 'dynamic', 15, 'unit.trunk', 0, 0.25, duration=1)]],
 [skc.DVRRuptureCondCheck(), skc.DevyatRodyaCoinPower(), skc.DAddXForEachY(0.04, 'dynamic', 1, 'unit.trunk', 0, 0.8)]),
 
 "Studious Dedication" : Skill((3, 4, 2), 0, "Studious Dedication", ("Blunt", "Gluttony"), [[], [skc.OnHit(skc.ApplyStatusCount('Sinking', 2))]], 

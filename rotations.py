@@ -3094,7 +3094,7 @@ def devyat_rodya_rotation(unit : Unit, enemy : Enemy, debug : bool = False, star
         b = min(dashboard)
         decision = a
        
-        if debug: print(f'Before attack: {unit.trunk} trunk and {the_rupture.potency}x{the_rupture.count} rupture')
+        if debug: print(f'Before attack: {unit.trunk} trunk and {the_rupture.potency}x{the_rupture.count} rupture (sp = {unit.sp})')
         if unit.trunk >= 30: unit.sp -= unit.trunk // 3
         unit.sp += 10 + (clash_count - 1) * 2 if clash_count else 0
         unit.clamp_sp()

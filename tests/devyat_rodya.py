@@ -18,9 +18,8 @@ unit.sp = 45
 
 total = 0
 count = 2000
-trunk : int = 0
 ruptures : list[tuple[int, int]] = [(0,0), (3,3), (15,3), (6,6), (15, 6), (99,99)]
-rupture : tuple[int, int] = ruptures[5]
+rupture : tuple[int, int] = ruptures[0]
 
 testing : bool = True
 
