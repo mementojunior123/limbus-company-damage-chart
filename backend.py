@@ -1688,6 +1688,18 @@ class SkillEffectConstructors:
     @staticmethod
     def FixedDamage(damage : int):
         return SkillEffect('total', 'add', damage, apply_func=SpecialSkillEffects.FixedDamage)
+    
+    @staticmethod
+    def GainBloodiedHand_test():
+        return SkillEffect('dynamic', 'add', 0, apply_func=SpecialSkillEffects.GainBloodiedHand_test)
+    
+    @staticmethod
+    def PriestGregorS2OnUse_test():
+        return SkillEffect('dynamic', 'add', 0, apply_func=SpecialSkillEffects.PriestGregorS2OnUse_test)
+    
+    @staticmethod
+    def PriestGregorS3OnUse_test():
+        return SkillEffect('dynamic', 'add', 0, apply_func=SpecialSkillEffects.PriestGregorS3OnUse_test)
 
 def get_dlup_str():
     return f'unit.statuses.{StatusNames.defense_level_up}.count'
@@ -3871,7 +3883,6 @@ class SpecialSkillEffects:
         env.dynamic -= dynamic_bonus
         env.effects[self][0] = 0
         
-
     def BarberOutisS1Bloodfeast(self : SkillEffect, env : Environment):
         current_blood : int = env.unit.bloodfeast
         potential_blood_consumed : int = clamp(current_blood, 0, 40)
@@ -3931,7 +3942,6 @@ class SpecialSkillEffects:
         if env.unit.blades < 1: env.unit.blades = 1
         env.effects[self] = [0, -1]
     
-
     def BarberOutisPassiveEarlyUpdate(self : SkillEffect, env : Environment):
         dynamic_bonus : float = clamp(0.015 * (env.unit.total_blood // 10), 0, 0.3)
         if env.enemy.has_status('Bleed'):
@@ -3944,6 +3954,37 @@ class SpecialSkillEffects:
             env.total += self.value
         env.enemy.take_damage(self.value, env)
         env.effects[self] = [self.value, -1]
+
+    def GainBloodiedHand_test(self : SkillEffect, env : Environment):
+        env.unit.hand += self.value
+        env.unit.hand = clamp(env.unit.hand, 0, Z)
+        env.effects[self] = [0, -1]
+    
+    def PriestGregorS2OnUse_test(self : SkillEffect, env : Environment):
+        if env.unit.heart >= X:
+            current_blood : int = env.unit.bloodfeast
+            potential_blood_consumed : int = clamp(current_blood, 0, Y)
+            intervals : int = potential_blood_consumed // Z
+            if intervals > 0:
+                hand_gain : int = intervals * 1
+                env.unit.hand += hand_gain
+                if env.unit.hand > B: env.unit.blades = B
+                blood_consumed : int = intervals * Z
+                env.unit.bloodfeast -= blood_consumed
+                env.unit.total_blood += blood_consumed
+        else:
+            env.unit.hand += C
+    
+    def PriestGregorS3OnUse_test(self : SkillEffect, env : Environment):
+        env.effects[self] = [0, -1]
+        env.global_state['S3Reuse'] = False
+        if env.unit.hand <= X: return
+        excess : int = env.unit.hand - X
+        env.unit.hand -= excess
+        if excess >= Y:
+            env.coin_power += 1
+        if excess >= Z:
+            env.global_state['S3Reuse'] = True
 
 SkillConditional = Callable[[SkillEffect, Environment], bool]
 AnySkillConditional = Union[int, SkillConditional]
@@ -4061,6 +4102,10 @@ class SkillConditionals:
             return True
         if not env.enemy.has_status("Rupture"): return False
         return env.enemy.statuses["Rupture"].potency >= 15
+    
+    @staticmethod
+    def PriestGregorS3Reuse_test(self : SkillEffect, env : Environment, data = None) -> bool:
+        return env.global_state['S3Reuse']
     
     
     
@@ -5391,7 +5436,19 @@ skc.OnUse(skc.ApplyStatusCount('Rupture', 2, condition=SkillConditionals.FLuRupt
 [skc.DAddXForEachY(1, 'coin_power', 6, 'enemy.statuses.Bleed.potency'), skc.BarberOutisS2Bloodfeast()]),
 "I'll Make You a New Dress!" : Skill((3, 3, 4), 5, "I'll Make You a New Dress!", ("Slash", "Wrath"), 
 [[skc.OnHit(skc.ApplyStatus('Bleed', 2))], [skc.OnHit(skc.ApplyStatus('Bleed', 2))], [skc.OnHit(skc.ApplyStatus('Bleed', 2))], [skc.BarberOutisS3Bonus()]],
-[skc.DAddXForEachY(1, 'coin_power', 5, 'enemy.statuses.Bleed.potency'), skc.BarberOutisS3AtkWeight(), skc.AfterAttack(skc.BarberOutisResetAtkWeight())])
+[skc.DAddXForEachY(1, 'coin_power', 5, 'enemy.statuses.Bleed.potency'), skc.BarberOutisS3AtkWeight(), skc.AfterAttack(skc.BarberOutisResetAtkWeight())]),
+
+"Sacrifice for the Family" : Skill((B, C, 2), +X, "Sacrifice for the Family", ("Blunt", "Gluttony"), 
+[[skc.OnHit(skc.ApplyStatus('Bleed', X))], [skc.OnHit(skc.ApplyStatus('Rupture', X)), skc.OnHit(skc.GainBloodiedHand_test(X))]], 
+[skc.DAddXForEachY(1, 'coin_power', X, 'enemy.statuses.Bleed.potency', 0, Y)]),
+"Suffocating Guilt" : Skill((B, C, 2), +X, "Suffocating Guilt", ("Blunt", "Pride"), 
+[[skc.OnHit(skc.ApplyStatusCount('Bleed', X))], [skc.OnHit(skc.ApplyStatus('Rupture', X)), skc.OnHit(skc.GainBloodiedHand_test(X))]],
+[skc.DAddXForEachY(1, 'coin_power', X, 'enemy.statuses.Bleed.potency', 0, Y), skc.PriestGregorS2OnUse_test()]),
+"The Unforgivable Sin" : Skill((B, C, 3), +X, "The Unforgivable Sin", ("Blunt", "Lust"), 
+[[skc.OnHit(skc.GainBloodiedHand_test(X))], [skc.OnHit(skc.ApplyStatusCount('Bleed', X)), skc.OnHit(skc.ApplyStatusCount('Rupture', X))], 
+[skc.OnHit(skc.ApplyStatus('Rupture', X)), skc.OnHit(skc.ApplyStatus('Bleed', X)), skc.ReuseCoinConditional(1, SkillConditionals.PriestGregorS3Reuse_test)]], 
+[skc.DAddXForEachY(1, 'coin_power', X, 'enemy.statuses.Bleed.potency'), skc.DAddXForEachY(X, 'dynamic', Y, 'unit.missing_hp', 0, Z),
+skc.PriestGregorS3OnUse_test(),])
 }
 
 
@@ -5527,5 +5584,6 @@ UNITS = {
     "Butterfly Sang" : Unit("Butterfly Sang", (gs("Celebration for the Departed"), gs("Solemn Lament for the Living"), gs("Goodbye Now, A Sorrow In You"))),
     "Yuro Lu" : Unit("Yuro Lu", (gs("Deduction Start"), gs("Morph Cane Technique"), gs("You're the Culprit!"))),
     "Fang Lu" : Unit("Fang Lu", (gs("Slam"), gs("Bonecrusher"), gs("A Cheerful Hunt's End"))),
-    "Barber Outis" : Unit("Barber Outis", (gs("Sewing"), gs("Scission"), gs("I'll Make You a New Dress!")))
+    "Barber Outis" : Unit("Barber Outis", (gs("Sewing"), gs("Scission"), gs("I'll Make You a New Dress!"))),
+    "Priest Gregor" : Unit("Priest Gregor", (gs("Sacrifice for the Family"), gs("Suffocating Guilt"), gs("The Unforgivable Sin")))
     }
