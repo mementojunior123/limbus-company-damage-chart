@@ -1690,16 +1690,27 @@ class SkillEffectConstructors:
         return SkillEffect('total', 'add', damage, apply_func=SpecialSkillEffects.FixedDamage)
     
     @staticmethod
-    def GainBloodiedHand_test():
-        return SkillEffect('dynamic', 'add', 0, apply_func=SpecialSkillEffects.GainBloodiedHand_test)
+    def GainBloodiedHand(count : int):
+        return SkillEffect('dynamic', 'add', count, apply_func=SpecialSkillEffects.GainBloodiedHand)
     
     @staticmethod
-    def PriestGregorS2OnUse_test():
-        return SkillEffect('dynamic', 'add', 0, apply_func=SpecialSkillEffects.PriestGregorS2OnUse_test)
+    def PriestGregorS1OnUse():
+        return SkillEffect('dynamic', 'add', 0, apply_func=SpecialSkillEffects.PriestGregorS1OnUse)
+
+    @staticmethod
+    def PriestGregorS2OnUse():
+        return SkillEffect('dynamic', 'add', 0, apply_func=SpecialSkillEffects.PriestGregorS2OnUse)
     
     @staticmethod
-    def PriestGregorS3OnUse_test():
-        return SkillEffect('dynamic', 'add', 0, apply_func=SpecialSkillEffects.PriestGregorS3OnUse_test)
+    def PriestGregorS3OnUse():
+        return SkillEffect('dynamic', 'add', 0, apply_func=SpecialSkillEffects.PriestGregorS3OnUse)
+    
+    @staticmethod
+    def PriestGregorInnatePassive():
+        effect = SkillEffect('dynamic', 'add', 0, apply_func=SpecialSkillEffects.apply_nothing_wduration)
+        effect.late_update = SpecialSkillEffects.PriestGregorInnatePassiveOnHit
+        return effect
+
 
 def get_dlup_str():
     return f'unit.statuses.{StatusNames.defense_level_up}.count'
@@ -3955,36 +3966,52 @@ class SpecialSkillEffects:
         env.enemy.take_damage(self.value, env)
         env.effects[self] = [self.value, -1]
 
-    def GainBloodiedHand_test(self : SkillEffect, env : Environment):
+    def GainBloodiedHand(self : SkillEffect, env : Environment):
         env.unit.hand += self.value
-        env.unit.hand = clamp(env.unit.hand, 0, Z)
+        env.unit.hand = clamp(env.unit.hand, 0, 30)
         env.effects[self] = [0, -1]
     
-    def PriestGregorS2OnUse_test(self : SkillEffect, env : Environment):
-        if env.unit.heart >= X:
+    def PriestGregorS1OnUse(self : SkillEffect, env : Environment):
+        env.unit.bloodfeast += 10
+        if env.unit.missing_hp < 0.5:
+            env.unit.bloodfeast += 10
+        env.effects[self] = [0, -1]
+    
+    def PriestGregorS2OnUse(self : SkillEffect, env : Environment):
+        if env.unit.heart >= 5:
             current_blood : int = env.unit.bloodfeast
-            potential_blood_consumed : int = clamp(current_blood, 0, Y)
-            intervals : int = potential_blood_consumed // Z
+            potential_blood_consumed : int = clamp(current_blood, 0, 60)
+            intervals : int = potential_blood_consumed // 6
             if intervals > 0:
                 hand_gain : int = intervals * 1
                 env.unit.hand += hand_gain
-                if env.unit.hand > B: env.unit.blades = B
-                blood_consumed : int = intervals * Z
+                if env.unit.hand > 30: env.unit.hand = 30
+                blood_consumed : int = intervals * 6
                 env.unit.bloodfeast -= blood_consumed
                 env.unit.total_blood += blood_consumed
         else:
-            env.unit.hand += C
+            env.unit.hand += 3
+            if env.unit.hand > 30: env.unit.hand = 30
+            env.unit.bloodfeast += 10
+        env.unit.bloodfeast += 10
+        env.effects[self] = [0, -1]
     
-    def PriestGregorS3OnUse_test(self : SkillEffect, env : Environment):
+    def PriestGregorS3OnUse(self : SkillEffect, env : Environment):
         env.effects[self] = [0, -1]
         env.global_state['S3Reuse'] = False
-        if env.unit.hand <= X: return
-        excess : int = env.unit.hand - X
+        if env.unit.hand <= 10: return
+        excess : int = env.unit.hand - 10
         env.unit.hand -= excess
-        if excess >= Y:
+        if excess >= 10:
             env.coin_power += 1
-        if excess >= Z:
-            env.global_state['S3Reuse'] = True
+        if excess >= 20:
+            env.global_state['S3Reuse'] = True      
+        env.unit.bloodfeast += 10
+    
+    def PriestGregorInnatePassiveOnHit(self : SkillEffect, env : Environment):
+        if env.unit.hand >= 20:
+            env.enemy.apply_status('Bleed', 1, 0, env)
+            env.enemy.apply_status('Rupture', 1, 0, env)
 
 SkillConditional = Callable[[SkillEffect, Environment], bool]
 AnySkillConditional = Union[int, SkillConditional]
@@ -4104,7 +4131,7 @@ class SkillConditionals:
         return env.enemy.statuses["Rupture"].potency >= 15
     
     @staticmethod
-    def PriestGregorS3Reuse_test(self : SkillEffect, env : Environment, data = None) -> bool:
+    def PriestGregorS3Reuse(self : SkillEffect, env : Environment, data = None) -> bool:
         return env.global_state['S3Reuse']
     
     
@@ -5438,17 +5465,17 @@ skc.OnUse(skc.ApplyStatusCount('Rupture', 2, condition=SkillConditionals.FLuRupt
 [[skc.OnHit(skc.ApplyStatus('Bleed', 2))], [skc.OnHit(skc.ApplyStatus('Bleed', 2))], [skc.OnHit(skc.ApplyStatus('Bleed', 2))], [skc.BarberOutisS3Bonus()]],
 [skc.DAddXForEachY(1, 'coin_power', 5, 'enemy.statuses.Bleed.potency'), skc.BarberOutisS3AtkWeight(), skc.AfterAttack(skc.BarberOutisResetAtkWeight())]),
 
-"Sacrifice for the Family" : Skill((B, C, 2), +X, "Sacrifice for the Family", ("Blunt", "Gluttony"), 
-[[skc.OnHit(skc.ApplyStatus('Bleed', X))], [skc.OnHit(skc.ApplyStatus('Rupture', X)), skc.OnHit(skc.GainBloodiedHand_test(X))]], 
-[skc.DAddXForEachY(1, 'coin_power', X, 'enemy.statuses.Bleed.potency', 0, Y)]),
-"Suffocating Guilt" : Skill((B, C, 2), +X, "Suffocating Guilt", ("Blunt", "Pride"), 
-[[skc.OnHit(skc.ApplyStatusCount('Bleed', X))], [skc.OnHit(skc.ApplyStatus('Rupture', X)), skc.OnHit(skc.GainBloodiedHand_test(X))]],
-[skc.DAddXForEachY(1, 'coin_power', X, 'enemy.statuses.Bleed.potency', 0, Y), skc.PriestGregorS2OnUse_test()]),
-"The Unforgivable Sin" : Skill((B, C, 3), +X, "The Unforgivable Sin", ("Blunt", "Lust"), 
-[[skc.OnHit(skc.GainBloodiedHand_test(X))], [skc.OnHit(skc.ApplyStatusCount('Bleed', X)), skc.OnHit(skc.ApplyStatusCount('Rupture', X))], 
-[skc.OnHit(skc.ApplyStatus('Rupture', X)), skc.OnHit(skc.ApplyStatus('Bleed', X)), skc.ReuseCoinConditional(1, SkillConditionals.PriestGregorS3Reuse_test)]], 
-[skc.DAddXForEachY(1, 'coin_power', X, 'enemy.statuses.Bleed.potency'), skc.DAddXForEachY(X, 'dynamic', Y, 'unit.missing_hp', 0, Z),
-skc.PriestGregorS3OnUse_test(),])
+"Sacrifice for the Family" : Skill((3, 4, 2), 1, "Sacrifice for the Family", ("Blunt", "Gluttony"), 
+[[skc.OnHit(skc.ApplyStatus('Bleed', 2))], [skc.OnHit(skc.ApplyStatus('Rupture', 1)), skc.OnHit(skc.GainBloodiedHand(3))]], 
+[skc.DAddXForEachY(1, 'coin_power', 6, 'enemy.statuses.Bleed.potency', 0, 2), skc.PriestGregorS1OnUse()]),
+"Suffocating Guilt" : Skill((4, 6, 2), 1, "Suffocating Guilt", ("Blunt", "Pride"), 
+[[skc.OnHit(skc.ApplyStatusCount('Bleed', 2))], [skc.OnHit(skc.ApplyStatus('Rupture', 1)), skc.OnHit(skc.GainBloodiedHand(3))]],
+[skc.DAddXForEachY(1, 'coin_power', 6, 'enemy.statuses.Bleed.potency', 0, 2), skc.PriestGregorS2OnUse()]),
+"The Unforgivable Sin" : Skill((5, 4, 3), 3, "The Unforgivable Sin", ("Blunt", "Lust"), 
+[[skc.OnHit(skc.GainBloodiedHand(3))], [skc.OnHit(skc.ApplyStatusCount('Bleed', 2)), skc.OnHit(skc.ApplyStatusCount('Rupture', 2))], 
+[skc.OnHit(skc.ApplyStatus('Rupture', 2)), skc.OnHit(skc.ApplyStatus('Bleed', 2)), skc.ReuseCoinConditional(1, SkillConditionals.PriestGregorS3Reuse)]], 
+[skc.DAddXForEachY(1, 'coin_power', 6, 'enemy.statuses.Bleed.potency'), skc.DAddXForEachY(0.015, 'dynamic', 0.01, 'unit.missing_hp', 0, 0.9),
+skc.PriestGregorS3OnUse(),])
 }
 
 

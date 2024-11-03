@@ -4036,3 +4036,59 @@ def barber_outis_rotation(unit : Unit, enemy : Enemy, debug : bool = False, star
     
     if debug: print("-".join(sequence))
     return total
+
+
+def priest_gregor_rotation(unit : Unit, enemy : Enemy, debug : bool = False, start_bleed : tuple[int, int] = (0,0), bleed_drain : int = 0, blood_start : int = 0, 
+                           blood_consumed_start : int = 0, hand_start : int = 0, blood_income : int|None = 0, hp_percent : float = 1, heart_start : int = 0):
+    sequence = [None for _ in range(6)]
+    bag = get_bag()
+
+    skills = {1 : unit.skill_1, 2 : unit.skill_2, 3 : unit.skill_3}
+    total = 0
+    enemy.apply_status('Bleed', 0, 0)
+    the_bleed = enemy.statuses['Bleed']
+    the_bleed.potency, the_bleed.count = start_bleed
+
+    unit.hand = hand_start
+    unit.bloodfeast = blood_start
+    unit.total_blood = blood_consumed_start
+    innate_passive : backend.SkillEffect = backend.skc.PriestGregorInnatePassive()
+    unit.apply_unique_effect('innate_passive', innate_passive, True)
+    unit.hp_percent = hp_percent
+    unit.missing_hp = 1 - hp_percent
+    unit.heart = heart_start
+    for i in range(6):
+        unit.on_turn_start()
+        enemy.on_turn_start()
+        unit.atk_weight = 1
+        dashboard = [bag[0], bag[1]]
+        a = max(dashboard)
+        b = min(dashboard)
+        decision = a
+
+        if unit.hand >= 10:
+            result = skills[decision].calculate_damage(unit, enemy, debug=debug, entry_effects=[backend.skc.OffenseLevelUp(unit.hand // 5), innate_passive])
+        else:
+            result = skills[decision].calculate_damage(unit, enemy, debug=debug, entry_effects=[innate_passive])
+        total += result
+        
+        if debug: print(f'{result}')
+        sequence[i] = str(decision)
+        bag.remove(decision)
+
+        
+        
+        if len(bag) < 2:
+            bag += get_bag()
+        
+        enemy.on_turn_end()
+        unit.on_turn_end()
+        if blood_income is not None:
+            unit.bloodfeast += blood_income
+        else:
+            total_bleed_count_consumed : int = backend.clamp(bleed_drain, 0, the_bleed.count)
+            unit.bloodfeast += the_bleed.potency * total_bleed_count_consumed
+        the_bleed.consume_count(bleed_drain)
+        unit.heart += 1
+    if debug: print("-".join(sequence))
+    return total
