@@ -1094,6 +1094,15 @@ class SkillEffectConstructors:
         effect.early_update = SpecialSkillEffects.FragileEarlyUpdate
         effect.megalate_update = SpecialSkillEffects.FragileCleanup
         return effect
+    
+    @staticmethod
+    def FestiveFever(count : int, status_effect : 'StatusEffect'):
+        effect = SkillEffect('dynamic', 'add', count)
+        effect.special_data = status_effect
+        effect.apply = SpecialSkillEffects.apply_nothing_wduration
+        effect.early_update = SpecialSkillEffects.FestiveFeverEarlyUpdate
+        effect.megalate_update = SpecialSkillEffects.FragileCleanup
+        return effect
 
     @staticmethod
     def MaidRyoPassive():
@@ -1710,6 +1719,37 @@ class SkillEffectConstructors:
         effect = SkillEffect('dynamic', 'add', 0, apply_func=SpecialSkillEffects.apply_nothing_wduration)
         effect.late_update = SpecialSkillEffects.PriestGregorInnatePassiveOnHit
         return effect
+    
+    @staticmethod
+    def GainBloomingThorn(count : int, condition : 'AnySkillConditional' = -1):
+        return SkillEffect('dynamic', 'add', 0, apply_func=SpecialSkillEffects.GainBloomingThorn)
+
+    
+    @staticmethod
+    def DulcRodyaS1OnUse():
+        return SkillEffect('dynamic', 'add', 0, apply_func=SpecialSkillEffects.DulcRodyaS1OnUse)
+    
+    @staticmethod
+    def DulcRodyaS2OnUse():
+        return SkillEffect('dynamic', 'add', 0, apply_func=SpecialSkillEffects.DulcRodyaS2OnUse)
+    
+    @staticmethod
+    def DulcRodyaS3OnUse():
+        return SkillEffect('dynamic', 'add', 0, apply_func=SpecialSkillEffects.DulcRodyaS3OnUse)
+    
+    @staticmethod
+    def DulcRodyaS4OnUse():
+        return SkillEffect('dynamic', 'add', 0, apply_func=SpecialSkillEffects.DulcRodyaS4OnUse)
+    
+    @staticmethod
+    def DulcRodyaS4AfterAttack():
+        return SkillEffect('dynamic', 'add', 0, apply_func=SpecialSkillEffects.DulcRodyaS4AfterAttack)
+
+    @staticmethod
+    def DulcRodyaInnatePassive():
+        effect = SkillEffect('dynamic', 'add', 0, apply_func=SpecialSkillEffects.apply_nothing_wduration)
+        effect.on_status_applied = SpecialSkillEffects.DulcRodyaInnatePassive
+        return effect
 
 
 def get_dlup_str():
@@ -2226,6 +2266,16 @@ class SpecialSkillEffects:
                     env.dynamic += self.value
         else:
             env.dynamic += self.value
+
+    def FestiveFeverEarlyUpdate(self : SkillEffect, env : Environment):
+        fever : StatusEffect = self.special_data
+        self.value = fever.count
+        if self.value <= 0: env.effects[self][0] = 0; return
+        dynamic_bonus : float = clamp(0.015 * fever.count, 0, 0.15)
+        if SkillTagNames.does_bloodfeast in env.skill.tags:
+            dynamic_bonus *= 2
+        env.effects[self][0] = dynamic_bonus
+        env.dynamic += dynamic_bonus
 
     def FragileEarlyUpdate(self : SkillEffect, env : Environment):
         fragile : StatusEffect = self.special_data
@@ -4013,6 +4063,63 @@ class SpecialSkillEffects:
             env.enemy.apply_status('Bleed', 1, 0, env)
             env.enemy.apply_status('Rupture', 1, 0, env)
 
+    def GainBloomingThorn(self : SkillEffect, env : Environment):
+        env.unit.thorns = clamp(env.unit.thorns + self.value, 0, 30)
+        env.effects[self] = [self.value, -1]
+    
+    def DulcRodyaS1OnUse(self : SkillEffect, env : Environment):
+        env.effects[self] = [0, -1]
+        if env.unit.bloodfeast < 10:
+            env.unit.bloodfeast += 5
+        else:
+            potential_bloodfeast : int = clamp(env.unit.bloodfeast, 0, 20)
+            thorn_gain = clamp(potential_bloodfeast // 10, 0, 2)
+            bloodfeast_consumed = thorn_gain * 10
+            thorn_gain += 1
+            env.unit.bloodfeast -= bloodfeast_consumed
+            env.unit.total_blood += bloodfeast_consumed
+            env.unit.thorns = clamp(env.unit.thorns + thorn_gain, 0, 30)
+        
+    def DulcRodyaS2OnUse(self : SkillEffect, env : Environment):
+        env.base += 2
+        env.effects[self] = [0, -1]
+        if env.unit.bloodfeast < 10:
+            env.unit.bloodfeast += 5
+        else:
+            potential_bloodfeast : int = clamp(env.unit.bloodfeast, 0, 30)
+            thorn_gain = clamp(potential_bloodfeast // 10, 0, 3)
+            bloodfeast_consumed = thorn_gain * 10
+            thorn_gain += 2
+            env.unit.bloodfeast -= bloodfeast_consumed
+            env.unit.total_blood += bloodfeast_consumed
+            env.unit.thorns = clamp(env.unit.thorns + thorn_gain, 0, 30)
+    
+    def DulcRodyaS3OnUse(self : SkillEffect, env : Environment):
+        env.effects[self] = [0, -1]
+        env.unit.thorns = clamp(env.unit.thorns + 3, 0, 30)
+        festive_fever_count : int = clamp(3 + env.unit.total_blood // 50, 3, 10)
+        env.unit.apply_status(StatusNames.festive_fever, 0, festive_fever_count)
+        env.unit.apply_status_next_turn(StatusNames.festive_fever, 0, festive_fever_count)
+    
+    def DulcRodyaS4OnUse(self : SkillEffect, env : Environment):
+        env.effects[self] = [0, -1]
+        env.unit.thorns = clamp(env.unit.thorns + 5, 0, 30)
+        festive_fever_count : int = clamp(5 + env.unit.total_blood // 50, 5, 10)
+        env.unit.apply_status(StatusNames.festive_fever, 0, festive_fever_count)
+        env.unit.apply_status_next_turn(StatusNames.festive_fever, 0, festive_fever_count)
+        env.dynamic += clamp((env.unit.total_blood // 5) * 0.01, 0, 0.5)
+        env.unit.atk_weight = 3
+    
+    def DulcRodyaS4AfterAttack(self : SkillEffect, env : Environment):
+        env.effects[self] = [0, -1]
+        env.unit.thorns = 0
+    
+    def DulcRodyaInnatePassive(self : SkillEffect , env : Environment, status_type : str, potency : int, count : int):
+        if (status_type == StatusNames.rupture) or (status_type == StatusNames.bleed):
+            bonus_status : int = clamp(env.unit.thorns // 10, 0, 2)
+            if bonus_status > 0:
+                env.enemy.apply_status(status_type, bonus_status, 0)
+
 SkillConditional = Callable[[SkillEffect, Environment], bool]
 AnySkillConditional = Union[int, SkillConditional]
 
@@ -4208,6 +4315,7 @@ class StatusNames:
     nails = "Nails"
     gaze = "Gaze"
     sewing_target = 'Sewing Target'
+    festive_fever = 'Festive Fever'
     
 class StatusEffect:
     @classmethod
@@ -4253,6 +4361,11 @@ class StatusEffect:
                 new_effect._has_potency = False
                 new_effect._max_count = 10
                 new_effect.on_skill_start = SpecialStatusEffects.apply_fragile
+                new_effect.on_turn_end = SpecialStatusEffects.consume_all
+            case StatusNames.festive_fever:
+                new_effect._has_potency = False
+                new_effect._max_count = 10
+                new_effect.on_skill_start = SpecialStatusEffects.apply_festive_fever
                 new_effect.on_turn_end = SpecialStatusEffects.consume_all
             case "Damage Up":
                 new_effect._has_potency = False
@@ -4537,6 +4650,12 @@ class SpecialStatusEffects:
         env.apply_queue.append(new_effect)
     
     @staticmethod
+    def apply_festive_fever(self : 'StatusEffect', env : Environment, is_defending : bool = True):
+        if is_defending: return
+        new_effect = skc.FestiveFever(self.count, self)
+        env.apply_queue.append(new_effect)
+    
+    @staticmethod
     def apply_def_down(self : 'StatusEffect', env : Environment, is_defending : bool = True):
         if not is_defending: return
         new_effect = skc.DefenseLevelDown(self.count)
@@ -4637,6 +4756,7 @@ class TremorFlavors:
 
 class SkillTagNames:
     spends_charge = 'SpendsCharge'
+    does_bloodfeast = 'ConsumesOrGainsBloodfeast'
 
 dgt = DamageTypes
 X : int = 0
@@ -5475,7 +5595,28 @@ skc.OnUse(skc.ApplyStatusCount('Rupture', 2, condition=SkillConditionals.FLuRupt
 [[skc.OnHit(skc.GainBloodiedHand(3))], [skc.OnHit(skc.ApplyStatusCount('Bleed', 2)), skc.OnHit(skc.ApplyStatusCount('Rupture', 2))], 
 [skc.OnHit(skc.ApplyStatus('Rupture', 2)), skc.OnHit(skc.ApplyStatus('Bleed', 2)), skc.ReuseCoinConditional(1, SkillConditionals.PriestGregorS3Reuse)]], 
 [skc.DAddXForEachY(1, 'coin_power', 6, 'enemy.statuses.Bleed.potency'), skc.DAddXForEachY(0.015, 'dynamic', 0.01, 'unit.missing_hp', 0, 0.9),
-skc.PriestGregorS3OnUse(),])
+skc.PriestGregorS3OnUse()]),
+
+"Begone…" : Skill((3, 4, 2), 1, "Begone…", ("Pierce", "Pride"), [[], [skc.OnHit(skc.ApplyStatus('Bleed', 1)), skc.OnHit(skc.ApplyStatus('Rupture', 1))]],
+[skc.DulcRodyaS1OnUse(), skc.AddXForEachY(1, 'coin_power', 6, 'enemy.statuses.Bleed.potency', 0, 2)], [SkillTagNames.does_bloodfeast]),
+"In Finely Ground Mistfall" : Skill((4, 4, 3), 2, "In Finely Ground Mistfall", ("Pierce", "Envy"), 
+[[skc.OnHit(skc.ApplyStatusCount('Bleed', 2)), skc.OnHit(skc.ApplyStatusCount('Rupture', 2))], 
+[], 
+[skc.OnHit(skc.ApplyStatus('Bleed', 1)), skc.OnHit(skc.ApplyStatus('Rupture', 1))]],
+[skc.DulcRodyaS2OnUse(), skc.AddXForEachY(1, 'coin_power', 6, 'enemy.statuses.Bleed.potency', 0, 2)], [SkillTagNames.does_bloodfeast]),
+"The Festival Will End" : Skill((4, 4, 3), 3, "The Festival Will End", ("Pierce", "Lust"), 
+[[skc.OnHit(skc.ApplyStatusCount('Bleed', 1)), skc.OnHit(skc.ApplyStatusCount('Rupture', 1))], 
+[skc.OnHit(skc.ApplyStatus('Bleed', 1)), skc.OnHit(skc.ApplyStatus('Rupture', 1))], 
+[skc.OnHit(skc.ApplyStatus('Bleed', 1)), skc.OnHit(skc.ApplyStatus('Rupture', 1))]],
+[skc.DulcRodyaS3OnUse(), skc.AddXForEachY(1, 'coin_power', 6, 'enemy.statuses.Bleed.potency')]),
+"A-DQHA - The Finale" : Skill((4, 5, 3), 5, "A-DQHA - The Finale", ("Pierce", "Lust"), 
+[[skc.OnHit(skc.ApplyStatusCount('Bleed', 2)), skc.OnHit(skc.ApplyStatusCount('Rupture', 2))], 
+[skc.OnHit(skc.ApplyStatus('Bleed', 2)), skc.OnHit(skc.ApplyStatus('Rupture', 2))], 
+[skc.OnHit(skc.ApplyStatus('Bleed', 2)), skc.OnHit(skc.ApplyStatus('Rupture', 2))]],
+[skc.DulcRodyaS4OnUse(), skc.AddXForEachY(1, 'coin_power', 6, 'enemy.statuses.Bleed.potency'), skc.AfterAttack(skc.DulcRodyaS4AfterAttack())]),
+"DQHA 15: Parasol" : Skill((5, 4, 2), 2, "DQHA 15: Parasol", ("Pierce", "Lust"), 
+[[skc.OnHit(skc.ApplyStatus('Bleed', 2))], [skc.OnHit(skc.ApplyStatusCount('Bleed', 1))]],
+[skc.GainBloomingThorn(4, condition=0)], [SkillTagNames.does_bloodfeast]),
 }
 
 
@@ -5612,5 +5753,6 @@ UNITS = {
     "Yuro Lu" : Unit("Yuro Lu", (gs("Deduction Start"), gs("Morph Cane Technique"), gs("You're the Culprit!"))),
     "Fang Lu" : Unit("Fang Lu", (gs("Slam"), gs("Bonecrusher"), gs("A Cheerful Hunt's End"))),
     "Barber Outis" : Unit("Barber Outis", (gs("Sewing"), gs("Scission"), gs("I'll Make You a New Dress!"))),
-    "Priest Gregor" : Unit("Priest Gregor", (gs("Sacrifice for the Family"), gs("Suffocating Guilt"), gs("The Unforgivable Sin")))
+    "Priest Gregor" : Unit("Priest Gregor", (gs("Sacrifice for the Family"), gs("Suffocating Guilt"), gs("The Unforgivable Sin"))),
+    "Dulcinea Rodya" : Unit("Dulcinea Rodya", ((gs("Begone…")), (gs("In Finely Ground Mistfall")), (gs("The Festival Will End")), (gs("A-DQHA - The Finale")), (gs("DQHA 15: Parasol"))))
     }

@@ -4067,9 +4067,9 @@ def priest_gregor_rotation(unit : Unit, enemy : Enemy, debug : bool = False, sta
         decision = a
 
         if unit.hand >= 10:
-            result = skills[decision].calculate_damage(unit, enemy, debug=debug, entry_effects=[backend.skc.OffenseLevelUp(unit.hand // 5), innate_passive])
+            result = skills[decision].calculate_damage(unit, enemy, debug=debug, entry_effects=[backend.skc.OffenseLevelUp(unit.hand // 5)])
         else:
-            result = skills[decision].calculate_damage(unit, enemy, debug=debug, entry_effects=[innate_passive])
+            result = skills[decision].calculate_damage(unit, enemy, debug=debug)
         total += result
         
         if debug: print(f'{result}')
@@ -4090,5 +4090,63 @@ def priest_gregor_rotation(unit : Unit, enemy : Enemy, debug : bool = False, sta
             unit.bloodfeast += the_bleed.potency * total_bleed_count_consumed
         the_bleed.consume_count(bleed_drain)
         unit.heart += 1
+    if debug: print("-".join(sequence))
+    return total
+
+def dulc_rodya_rotation(unit : Unit, enemy : Enemy, debug : bool = False, start_bleed : tuple[int, int] = (0,0), bleed_drain : int = 0, blood_start : int = 0, 
+                           blood_consumed_start : int = 0, thorn_start : int = 0, blood_income : int|None = 0, max_AOE : int = 1, thorn_income : int = 0):
+    sequence = [None for _ in range(6)]
+    bag = get_bag()
+
+    skills = {1 : unit.skill_1, 2 : unit.skill_2, 3 : unit.skill_3, 4 : unit.skills[3], 'Counter' : unit.skills[4]}
+    total = 0
+    enemy.apply_status('Bleed', 0, 0)
+    the_bleed = enemy.statuses['Bleed']
+    the_bleed.potency, the_bleed.count = start_bleed
+
+    unit.thorns = thorn_start
+    unit.bloodfeast = blood_start
+    unit.total_blood = blood_consumed_start
+    innate_passive : backend.SkillEffect = backend.skc.DulcRodyaInnatePassive()
+    unit.apply_unique_effect('innate_passive', innate_passive, True)
+    unit.skill_1.set_conds([True])
+    for i in range(6):
+        unit.on_turn_start()
+        enemy.on_turn_start()
+        unit.atk_weight = 1
+        dashboard = [bag[0], bag[1]]
+        a = max(dashboard)
+        b = min(dashboard)
+        decision = a
+        if decision == 3:
+            if unit.thorns >= 25:
+                decision = 4
+            elif (unit.thorns >= 19 + i * (1)) and i < 5:
+                decision = b if b == 2 else 'Counter' if dashboard[0] != 3 else b
+
+        result = skills[decision].calculate_damage(unit, enemy, debug=debug)
+        actual_AOE = min(unit.atk_weight, max_AOE)
+        total += result * actual_AOE
+        if decision == 4:
+            unit.thorns = 0
+        
+        if debug: print(f'{result} ({actual_AOE} {'part' if actual_AOE == 1 else 'parts'} hit)')
+        sequence[i] = str(decision)
+        bag.remove(dashboard[0] if decision == 'Counter' else 3 if decision == 4 else decision)
+        
+        
+        if len(bag) < 2:
+            bag += get_bag()
+        
+        enemy.on_turn_end()
+        unit.on_turn_end()
+        unit.thorns += thorn_income
+        unit.thorns = backend.clamp(unit.thorns, 0, 30)
+        if blood_income is not None:
+            unit.bloodfeast += blood_income
+        else:
+            total_bleed_count_consumed : int = backend.clamp(bleed_drain, 0, the_bleed.count)
+            unit.bloodfeast += the_bleed.potency * total_bleed_count_consumed
+        the_bleed.consume_count(bleed_drain)
     if debug: print("-".join(sequence))
     return total
