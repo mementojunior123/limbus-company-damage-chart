@@ -3561,8 +3561,9 @@ class SpecialSkillEffects:
         env.effects[self] = [bonus, -1]
     
     def GainCourrierTrunk(self : SkillEffect, env : Environment):
-        env.unit.trunk += self.value
-        env.effects[self] = [self.value, -1]
+        trunk_gain : int = self.value if not getattr(env.unit, 'fixed_trunk', False) else 0
+        env.unit.trunk += trunk_gain
+        env.effects[self] = [trunk_gain, -1]
     
     def DevyatRodyaCoinPower(self : SkillEffect, env : Environment):
         rupture_potency : int = env.enemy.statuses['Rupture'].potency if env.enemy.has_status('Rupture') else 0

@@ -3060,19 +3060,20 @@ def bl_outis_rotation(unit : Unit, enemy : Enemy, debug : bool = False, start_po
     return total
 
 def devyat_rodya_rotation(unit : Unit, enemy : Enemy, debug : bool = False, start_trunk : int = 0, enemy_rupture : tuple[int, int] = (0,0), 
-                          start_sp : int = 45, clash_count : int = 2):
+                          start_sp : int = 45, clash_count : int = 2, fixed_trunk : bool = False):
     sequence = [None for _ in range(6)]
     bag = get_bag()
 
     skills = {1 : unit.skill_1, 2 : unit.skill_2, 3 : unit.skill_3}
     total = 0
     unit.trunk = start_trunk
+    unit.fixed_trunk = fixed_trunk
     enemy.apply_status('Rupture', 0, 0)
     unit.sp = start_sp
     the_rupture : backend.StatusEffect = enemy.statuses.get("Rupture")
     the_rupture.potency, the_rupture.count = enemy_rupture
     for i in range(6):
-        unit.trunk += 3
+        if not fixed_trunk: unit.trunk += 3
         dashboard = [bag[0], bag[1]]
         a = max(dashboard)
         b = min(dashboard)
@@ -3099,6 +3100,37 @@ def devyat_rodya_rotation(unit : Unit, enemy : Enemy, debug : bool = False, star
     
     if debug: print("-".join(sequence))
     return total
+
+def devyat_rodya_trunk_sim(unit : Unit, enemy : Enemy, debug : bool = False, start_trunk : int = 0, turn_amount : int = 6) -> list[int]:
+    sequence = [None for _ in range(turn_amount)]
+    result = [0 for _ in range(turn_amount)]
+    bag = get_bag()
+
+    skills = {1 : unit.skill_1, 2 : unit.skill_2, 3 : unit.skill_3}
+    unit.trunk = start_trunk
+    enemy.apply_status('Rupture', 0, 0)
+    unit.sp = 45
+    for i in range(turn_amount):
+        unit.trunk += 3
+        dashboard = [bag[0], bag[1]]
+        a = max(dashboard)
+        b = min(dashboard)
+        decision = a
+    
+        damage = skills[decision].calculate_damage(unit, enemy, debug=False, entry_effects=None if unit.trunk < 20 else [backend.skc.DynamicBonus(0.1)])
+        
+        sequence[i] = str(decision)
+        result[i] = unit.trunk
+        bag.remove(decision)
+
+        
+        
+        if len(bag) < 2:
+            bag += get_bag()
+    
+    if debug: print("-".join(sequence))
+    return result
+
 
 def deici_meur_rotation(unit : Unit, enemy : Enemy, debug : bool = False, enemy_sinking : tuple[int, int] = (0,0), start_insight : int = 1, 
                         start_erudition : int = 0, discarding_allies : int = 0):

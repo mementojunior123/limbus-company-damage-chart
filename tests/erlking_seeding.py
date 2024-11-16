@@ -1,3 +1,6 @@
+import sys
+sys.path.append(".")
+
 from math import floor
 import backend
 from backend import Skill, Enemy, Unit
@@ -17,6 +20,7 @@ count = 2000
 
 sinking_seeds : list[tuple[int, int]] = [(0,0), (5,3), (10, 8), (99, 99)]
 sinking_index : int = 0
+sinking : tuple[int, int] = sinking_seeds[sinking_index]
 
 coffin_seeds : list[int] = [i * 2 for i in range(6)]
 start_sp : int = 45
@@ -24,12 +28,13 @@ part_count : int = 1
 
 playstyles : list[str] = ['Coffin Spam', 'Mixed', "No Horse"]
 playstyle_index : int = 0
+playstyle : str = playstyles[playstyle_index]
 
-for coffin_seed in coffin_seeds:
+for coffin in coffin_seeds:
     for _ in range(count):
-        total += hunt_cliff_rotation(unit, enemy, False, coffin_seed, 0, sinking_seeds[sinking_index], start_sp, part_count, True, playstyles[playstyle_index])
+        total += hunt_cliff_rotation(unit, enemy, False, coffin, 0, sinking, start_sp, part_count, True, playstyle)
 
-    print(f'{unit.name} average : {total/count:0.2f}(start_coffins = {coffin_seed})')
+    print(f'{unit.name} average : {total/count:0.2f}(start_coffins = {coffin})')
     total = 0
 
 '''
