@@ -2247,7 +2247,7 @@ def dawn_clair_rotation(unit : Unit, enemy : Enemy, debug : bool = False, passiv
     return total
 
 def mb_outis_rotation(unit : Unit, enemy : Enemy, debug : bool = False, start_burn : tuple[int, int] = (0,0), start_bullet : int = 1, 
-                      max_AOE : int = 1, start_flame : int = 0, passive_active : bool = True):
+                      max_AOE : int = 1, start_flame : int = 0, passive_active : bool = True, ignore_dark_flame_damage : bool = True):
     sequence = [None for _ in range(6)]
     bag = get_bag()
 
@@ -2257,7 +2257,9 @@ def mb_outis_rotation(unit : Unit, enemy : Enemy, debug : bool = False, start_bu
 
     enemy.clear_effects()
     enemy.apply_status("Burn", *start_burn)
+    burn = enemy.statuses['Burn']
     enemy.apply_status(backend.StatusNames.dark_flame,0, start_flame)
+    dark_flame = enemy.statuses[backend.StatusNames.dark_flame]
     if passive_active: unit.apply_unique_effect('passive', backend.skc.MBOutisPassive(), True)
 
     for i in range(6):
@@ -2285,6 +2287,8 @@ def mb_outis_rotation(unit : Unit, enemy : Enemy, debug : bool = False, start_bu
         if len(bag) < 2:
             bag += get_bag()
         
+        if not ignore_dark_flame_damage:
+            total += floor(burn.potency * dark_flame.count * enemy.sin_res['Pride'])
         enemy.on_turn_end()
     
     if debug: print("-".join(sequence))

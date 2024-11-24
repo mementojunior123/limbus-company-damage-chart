@@ -1,6 +1,6 @@
 from math import floor, ceil
 from random import random, randint
-from typing import Any, Callable, Optional, Union
+from typing import Any, Callable, Optional, Union, TypedDict
 
 
 def bind_method(method : Callable, obj : object):
@@ -54,7 +54,25 @@ class AttrStrDict(dict):
     def __setattr__(self, name: str, val: Any) -> Any:
         self[name] = val
 
+class SinResDict(TypedDict):
+    Wrath : float
+    Lust : float
+    Sloth : float
+    Gluttony : float
+    Gloom : float
+    Pride : float
+    Envy : float
 
+class PhysResDict(TypedDict):
+    Slash : float
+    Pierce : float
+    Blunt : float
+
+class ResDict(TypedDict):
+    sin : SinResDict
+    phys : PhysResDict
+
+["Wrath", "Lust", "Sloth", "Gluttony", "Gloom", "Pride", "Envy"]
 class Enemy:
 
     @classmethod
@@ -85,14 +103,14 @@ class Enemy:
                 phys_res[val] = 1
         
         
-        self.phys_res : dict[str, float] = phys_res
+        self.phys_res : PhysResDict = phys_res
         for val in ["Wrath", "Lust", "Sloth", "Gluttony", "Gloom", "Pride", "Envy"]:
             if not val in sin_res:
                 sin_res[val] = 1
             
         
-        self.sin_res : dict[str, float] = sin_res
-        self.og_res = {"sin" : self.sin_res.copy(), "phys" : self.phys_res.copy()}
+        self.sin_res : SinResDict = sin_res
+        self.og_res : ResDict = {"sin" : self.sin_res.copy(), "phys" : self.phys_res.copy()}
 
         self.og_tresholds = stagger_tresholds.copy()
         self.stagger_tresholds = stagger_tresholds
